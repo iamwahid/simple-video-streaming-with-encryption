@@ -14,6 +14,8 @@ public class VideoStream {
 	public VideoStream(String filename) throws Exception {
 
 		//init variables
+		System.out.println(filename);
+		filename = "movie.Mjpeg";
 		fis = new FileInputStream(filename);
 		frame_nb = 0;
 	}
@@ -29,7 +31,7 @@ public class VideoStream {
 
 		//read current frame length
 		fis.read(frame_length, 0, 5);
-
+		System.out.println(frame_length);
 		//transform frame_length to integer
 		length_string = new String(frame_length);
 		length = Integer.parseInt(length_string);

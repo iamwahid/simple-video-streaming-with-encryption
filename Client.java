@@ -4,6 +4,7 @@
  ---------------------- */
 
 import java.io.*;
+import java.nio.*;
 import java.net.*;
 import java.util.*;
 import java.awt.*;
@@ -11,7 +12,159 @@ import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.Timer;
 
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.RSAPrivateKeySpec;
+import java.security.spec.RSAPublicKeySpec;
+import java.util.Enumeration;
+
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.KeyAgreement;
+//add
+import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.Socket;
+import java.net.SocketException;
+import java.util.StringTokenizer;
+
+
+import java.math.BigInteger;
+import java.security.AlgorithmParameterGenerator;
+import java.security.AlgorithmParameters;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import javax.crypto.interfaces.DHPublicKey;
+
+import java.security.spec.InvalidParameterSpecException;
+
+import javax.crypto.spec.DHParameterSpec;
+import java.io.*;
+import java.security.spec.X509EncodedKeySpec;
+import java.security.KeyFactory;
+
+import java.util.Base64;
+
+import java.io.BufferedWriter;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.ServerSocket;
+import java.nio.channels.DatagramChannel;
+// import java.util.Timer;
+import java.net.InetSocketAddress;
+
+import java.lang.Throwable;
+
 public class Client {
+
+	static int RTSP_ID = 123456; //ID of the RTSP session
+    int RTSPSeqNb = 0; //Sequence number of RTSP messages within the session
+    static String s_RTSP_ID ; //ID of the RTSP session
+    static String s_RTSPSeqNb; //Sequence number of RTSP messages within the session
+    private String str_keysize;
+    private String str_prime;
+    private String str_alpha;
+    private String str_A_Pubkey;
+    private String str_B_shared_key;
+    private String str_M_public_key;
+    private String str_Rec_Public_Key;
+    static PublicKey Client_RSAPublicKey;
+    private Thread thread_serverStart;
+
+	private boolean Callee = false;
+    private int SEND_PORT = 7777;
+    private int RECV_PORT = 8888;
+    private int SRCV_PORT=9999;
+
+	private DatagramSocket send_socket;
+    //private BufferedWriter out;
+    //private BufferedReader in1;
+    //private Socket socket;
+    private Socket socket1;
+    //private BufferedReader in;
+    //private ServerSocket listner;
+    private ServerSocket listner1;
+    private InetAddress Address;
+    private InetAddress Address1;
+
+	//RTP variables:
+    //----------------
+
+    private  DatagramPacket rcvdp,senddp,rcvdp_info; //UDP packet received from the server
+    DatagramSocket RTPsocket,RTPsocket_time; //socket to be used to send and receive UDP packets
+    DatagramSocket RTPsocket_info; //socket to be used to send and receive UDP packets
+    final static int RTP_RCV_PORT = 25000; //port where the client will receive the RTP packets
+    final static int RTP_RCV_PORT_INFO = 20000; //port where the client will receive the RTP packets
+    private DatagramChannel channel;
+    int messagenb=0;
+    Timer timer; //timer used to receive data from the UDP socket
+    private byte[] buf; //buffer used to store data received from the server
+    private byte[] buf1; //buffer used to store data received from the server
+    static int Message_LENGTH = 500;
+    //RTSP variables
+    //----------------
+    //rtsp states
+    private static int EN_STATE;
+    private static int CLEAR = 0;
+    private static int DHON = 1;
+    private static int RSAON = 2;
+    private static int INIT = 0;
+    private static int READY = 1;
+    private static int DHREADY = 8;
+    private static int CHATTING = 2;
+	private static int PLAYING = 2;
+    private static int STOP = 3;
+    private static int state; //RTSP state == INIT or READY or PLAYING
+    private Socket RTSPsocket; //socket used to send/receive RTSP messages
+    private ServerSocket ss;
+    private Socket s;
+
+    private Socket socket;
+
+	//input and output stream filters
+    private static BufferedReader RTSPBufferedReader,RTSPBufferedReaderP, RTSPBufferedReaderdh2,RTSPBufferedReaderrsa ;
+    private static BufferedWriter RTSPBufferedWriter,RTSPBufferedWriterS,RTSPBufferedWriterdh, RTSPBufferedWriterrsa;
+    private static BufferedWriter RTSPBufferedWriterdhp;
+    private static String VideoFileName; //video file to request to the server
+    //Sequence number of RTSP messages within the session
+    final static int inputMessage_length=5;
+    final static int SETUP = 3;
+    final static int PLAY = 4;
+    final static int PAUSE = 5;
+    final static int TEARDOWN = 6;
+    final static int DHSETUP = 8;
+    final static int RSASETUP = 9;
+    // private String CRLF = "\r\n";
+
+    private  String ServerHost;
+    private int RTSP_server_port,reply_code;
+    private Thread  timerplayThread;
+    private int RTSPid = 999; //ID of the RTSP session (given by the RTSP Server)
+    private String s_RTSPid; //ID of the RTSP session (given by the RTSP Server)
+    private String keysize;
+    private int i_keysize;
+
+
+    private String CRLF = "\r\n";
+    private String recv_BPubKey;
+    private String RxLine;
+    private ServerSocket listenSocket;
+    private   AlgorithmParameterGenerator paramGen;
+    private String dh_shared_secret;
+    private String recovered_rsakey;
+    private PrivateKey Client_RSAPrivateKey;
+    private OutputStream os;
+    private DataOutputStream dos;
 
 	// GUI
 	// ----
@@ -32,46 +185,6 @@ public class Client {
 	JLabel iconLabel = new JLabel();
 
 	ImageIcon icon;
-
-	// RTP variables:
-	// ----------------
-	DatagramPacket rcvdp; // UDP packet received from the server
-
-	DatagramSocket RTPsocket; // socket to be used to send and receive UDP
-								// packets
-
-	static int RTP_RCV_PORT = 25000; // port where the client will receive
-										// the RTP packets
-
-	Timer timer; // timer used to receive data from the UDP socket
-
-	byte[] buf; // buffer used to store data received from the server
-
-	// RTSP variables
-	// ----------------
-	// rtsp states
-	final static int INIT = 0;
-
-	final static int READY = 1;
-
-	final static int PLAYING = 2;
-
-	static int state; // RTSP state == INIT or READY or PLAYING
-
-	Socket RTSPsocket; // socket used to send/receive RTSP messages
-
-	// input and output stream filters
-	static BufferedReader RTSPBufferedReader;
-
-	static BufferedWriter RTSPBufferedWriter;
-
-	static String VideoFileName; // video file to request to the server
-
-	int RTSPSeqNb = 0; // Sequence number of RTSP messages within the session
-
-	int RTSPid = 0; // ID of the RTSP session (given by the RTSP Server)
-
-	final static String CRLF = "\r\n";
 
 	// Video constants:
 	// ------------------
@@ -126,6 +239,8 @@ public class Client {
 		// allocate enough memory for the buffer used to receive data from the
 		// server
 		buf = new byte[15000];
+		buf1 = new byte[8];
+		keysize = "512";
 	}
 
 	// ------------------------------------
@@ -188,6 +303,10 @@ public class Client {
 					// set TimeOut value of the socket to 5msec.
 					RTPsocket.setSoTimeout(5);
 
+					RTPsocket_info = new DatagramSocket(RTP_RCV_PORT_INFO);
+					// set TimeOut value of the socket to 5msec.
+					RTPsocket_info.setSoTimeout(5);
+
 				} catch (SocketException se) {
 					System.out.println("Socket exception: " + se);
 					System.exit(0);
@@ -207,7 +326,11 @@ public class Client {
 					state = READY;
 					// System.out.println("New RTSP state: ....");
 				}
+			} else if (state == READY) {
+				// Send SETUP message to the server
+				send_RTSP_dhrequest("DHSETUP");
 			}// else if state != INIT then do nothing
+
 		}
 	}
 
@@ -307,15 +430,33 @@ public class Client {
 		public void actionPerformed(ActionEvent e) {
 
 			// Construct a DatagramPacket to receive data from the UDP socket
+			byte[] receiveData =new byte[1024];
 			rcvdp = new DatagramPacket(buf, buf.length);
+			rcvdp_info = new DatagramPacket(receiveData, receiveData.length);
+			int i,j;
+			// byte[] ByteToInput=new byte[];
+			byte[] receiveDataByte;
 
 			try {
 				// receive the DP from the socket:
 				RTPsocket.receive(rcvdp);
+				RTPsocket_info.receive(rcvdp_info);
+				RTPpacket rtp_packet;
+				RTPpacket rtp_packet_info = new RTPpacket(rcvdp_info.getData(), rcvdp_info.getLength());
 
-				// create an RTPpacket object from the DP
-				RTPpacket rtp_packet = new RTPpacket(rcvdp.getData(), rcvdp
-						.getLength());
+				if (EN_STATE == DHON) {//받은 packet안에 data를 rc4_decrypt 메소드를 이용해서 복호화.
+					receiveDataByte = rc4_decrypt(rcvdp.getData(), dh_shared_secret);
+					// int a = rcvdp.getLength();
+					// // receiveDataByte = aes_decrypt(rcvdp.getData(), dh_shared_secret);
+					// for(i=0,j=0;i<a;i++,j++){
+                    //         ByteToInput[j] = receiveDataByte[i];
+                    // }
+					rtp_packet = new RTPpacket(receiveDataByte, receiveDataByte.length);
+				} else {
+					// create an RTPpacket object from the DP
+					receiveDataByte = rcvdp.getData();
+					rtp_packet = new RTPpacket(rcvdp.getData(), rcvdp.getLength());
+				}
 
 				// print important header fields of the RTP packet received:
 				/*System.out.println("Got RTP packet with SeqNum # "
@@ -331,17 +472,26 @@ public class Client {
 				byte[] payload = new byte[payload_length];
 				rtp_packet.getpayload(payload);
 
+				int info_length = rtp_packet_info.getpayload_length();
+				System.out.println("info_length: " + info_length);
+				byte[] info = new byte[info_length];
+				rtp_packet_info.getpayload(info);
+
 				// get an Image object from the payload bitstream
 				Toolkit toolkit = Toolkit.getDefaultToolkit();
 				Image image = toolkit.createImage(payload, 0, payload_length);
 
+
 				// display the image as an ImageIcon object
 				icon = new ImageIcon(image);
 				iconLabel.setIcon(icon);
+				System.out.println("payload: " + payload_length);
 			} catch (InterruptedIOException iioe) {
 				// System.out.println("Nothing to read");
 			} catch (IOException ioe) {
 				System.out.println("Exception caught: " + ioe);
+			} catch (Throwable t) {
+				t.printStackTrace();
 			}
 		}
 	}
@@ -356,7 +506,7 @@ public class Client {
 			// parse status line and extract the reply_code:
 			String StatusLine = RTSPBufferedReader.readLine();
 			// System.out.println("RTSP Client - Received from Server:");
-			System.out.println(StatusLine);
+			System.out.println("StatusLine: 5w0" + StatusLine);
 
 			StringTokenizer tokens = new StringTokenizer(StatusLine);
 			tokens.nextToken(); // skip over the RTSP version
@@ -365,10 +515,10 @@ public class Client {
 			// if reply code is OK get and print the 2 other lines
 			if (reply_code == 200) {
 				String SeqNumLine = RTSPBufferedReader.readLine();
-				System.out.println(SeqNumLine);
+				System.out.println("SeqNumLine: " + SeqNumLine);
 
 				String SessionLine = RTSPBufferedReader.readLine();
-				System.out.println(SessionLine);
+				System.out.println("SessionLine: " + SessionLine);
 
 				// if state == INIT gets the Session Id from the SessionLine
 				tokens = new StringTokenizer(SessionLine);
@@ -419,5 +569,236 @@ public class Client {
 			System.exit(0);
 		}
 	}
+
+	private static BigInteger getSharedKey(PublicKey pubKey,PrivateKey privKey)
+            throws NoSuchAlgorithmException, InvalidKeyException  {
+        KeyAgreement ka = KeyAgreement.getInstance("DH");
+        ka.init(privKey);
+        ka.doPhase(pubKey, true);
+        byte[] b = ka.generateSecret();
+        BigInteger secretKey  = new BigInteger(b);
+        return secretKey ;
+    }
+
+	//DH KEY EXCHANGE 하는 메소드<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    private void send_RTSP_dhrequest(final String request_type) {
+
+        // send_RTSP_dhrequest("DHSETUP") called;
+
+        Runnable T_send_RTSP_dhrequest = new Runnable() {
+            @Override
+            public void run() {
+
+                try {
+                    //Use the RTSPBufferedWriter to write to the RTSP socket
+
+
+                    // dos = new DataOutputStream(new BufferedOutputStream(RTSPsocket.getOutputStream()));
+                    // dis = new DataInputStream(new BufferedInputStream(RTSPsocket.getInputStream()));
+                    //  Log.d("VS", "Client Socket Created");
+                    // MessageInput = editKeysize.getText().toString();
+                    //final InetAddress PeerIP = InetAddress.getByName(editText_ServerIP.getText().toString());
+                    //%%%%%%%%%%%%%%%%%%%%%
+                    paramGen = AlgorithmParameterGenerator.getInstance("DH");
+                    // final String keysize = editKeysize.getText().toString();
+                    final int i_keysize =  Integer.parseInt(keysize);
+                    paramGen.init(i_keysize);// number of bits
+                    AlgorithmParameters params = paramGen.generateParameters();
+                    DHParameterSpec dhSpec = (DHParameterSpec) params.getParameterSpec(DHParameterSpec.class);
+
+                    BigInteger prime = dhSpec.getP();
+                    final String S_prime = prime.toString();
+                    BigInteger alpha = dhSpec.getG();
+                    final String S_alpha = alpha.toString();
+
+
+                    //A
+                    KeyPairGenerator akpg = KeyPairGenerator.getInstance("DH");
+                    DHParameterSpec param = new DHParameterSpec(prime, alpha);
+
+                    akpg.initialize(param);
+                    KeyPair A_kp = akpg.generateKeyPair(); //public key (Ya) and private key (Xa) of A
+                    final BigInteger A_PubKey = ((javax.crypto.interfaces.DHPublicKey) A_kp.getPublic()).getY();
+                    // final String S_A_PubKey = Base64.encodeToString(A_kp.getPublic().getEncoded(), Base64.NO_WRAP);
+                    final String S_A_PubKey = Base64.getEncoder().encodeToString(A_kp.getPublic().getEncoded());
+
+                    RTSPBufferedWriterdh = new BufferedWriter(new OutputStreamWriter(RTSPsocket.getOutputStream()));
+                    RTSPBufferedWriterdh.write("DHSETUP "  + keysize + " " + S_prime + '\n');
+                    // RTSPBufferedWriterdh.flush();
+                    //write the CSeq line:
+                    RTSPBufferedWriterdh.write("S-alphadh " + S_alpha  + '\n');
+                    //RTSPBufferedWriterdh.newLine();
+                    // RTSPBufferedWriterdh.flush();
+                    //check if request_type is equal to "SETUP" and in this case write the Transport: line advertising to the server the port used to receive the RTP packets RTP_RCV_PORT
+                    // RTSPBufferedWriterdh.write(S_alpha + " " + S_A_PubKey + CRLF);
+
+                    s_RTSPid= String.valueOf(RTSPid);
+                    RTSPBufferedWriterdh.write("S_pubkeydh "  + S_A_PubKey  + '\n' );
+                    //RTSPBufferedWriterdh.write("Sessiondh: " + s_RTSPid );
+                    // RTSPBufferedWriterdh.newLine();
+                    RTSPBufferedWriterdh.flush();
+                    System.out.println("VS: 11111 Sessiondh: write pass " );
+
+                    //final String M_Line = dis.readUTF();
+                    //client_socket.send(send_packet);
+                    System.out.println("VR: DHRequest Send");
+
+                    try {
+						Thread.sleep(200);
+					} 
+					catch(InterruptedException e) {
+						// this part is executed when an exception (in this example InterruptedException) occurs
+					}
+                    //parse status line and extract the reply_code:
+                    RTSPBufferedReaderdh2 = new BufferedReader(new InputStreamReader(RTSPsocket.getInputStream()));
+                    String StatusLine = RTSPBufferedReaderdh2.readLine();
+                    String paraLine = RTSPBufferedReaderdh2.readLine();
+                    String SessionLine = RTSPBufferedReaderdh2.readLine();//11111
+                    System.out.println("VS: 11111 SessionLine = " +SessionLine);
+                    //System.out.println("RTSP Client - Received from Server:");
+                    System.out.println("StatusLine: 665 " + StatusLine);
+
+                    StringTokenizer tokens = new StringTokenizer(StatusLine);
+                    tokens.nextToken(); //skip over the RTSP version
+                    reply_code = Integer.parseInt(tokens.nextToken());
+                    //in_reply_code = reply_code;
+                    System.out.println("VS: " + String.valueOf(reply_code));
+
+                    //if reply code is OK get and print the 2 other lines
+                    if (reply_code == 200) {
+                        // String SeqNumLine = RTSPBufferedReaderP.readLine();
+                        System.out.println("VS " + paraLine);
+                        StringTokenizer tokenizedLine = new StringTokenizer(paraLine);
+                        final String Type2 = tokenizedLine.nextToken();
+
+                        recv_BPubKey = tokenizedLine.nextToken();
+                        System.out.println("VS: recv_BPubKey = tokenizedLine.nextToken()");
+						System.out.println("recv_BPubKey: " + recv_BPubKey);
+                        // String SessionLine = RTSPBufferedReaderP.readLine();
+                        System.out.println("VS" + SessionLine);
+
+                        //if state == INIT gets the Session Id from the SessionLine
+                        //tokens = new StringTokenizer(SessionLine);
+                        //tokens.nextToken(); //skip over the Session:
+                        //RTSPid = Integer.parseInt(tokens.nextToken());
+                        System.out.println("VS RTSPid = " +String.valueOf( RTSPid));
+                    }
+                    //
+
+                    // byte[] publicBytes = Base64.decode(recv_BPubKey.getBytes(), Base64.NO_WRAP);
+					byte[] publicBytes = Base64.getDecoder().decode(recv_BPubKey.getBytes());
+                    X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicBytes);
+                    KeyFactory keyFactory = KeyFactory.getInstance("DH");
+                    PublicKey B_publicKey = keyFactory.generatePublic(keySpec);
+
+                    final BigInteger A_SharedSecret = getSharedKey(B_publicKey, A_kp.getPrivate());
+                    dh_shared_secret = A_SharedSecret.toString();
+                    EN_STATE = DHON;
+                    System.out.println("VS: A's shared DH key = " + A_SharedSecret.toString());
+                        /*
+
+                        MainActivity.this.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                sharedkey.setText("A's shared DH key = " + A_SharedSecret.toString());
+                            }
+                        });*/
+
+
+                } catch (SocketException e) {
+                    System.out.println("VR: Sender SocketException");
+                } catch (IOException e) {
+                // TODO Auto-generated catch block
+                    e.printStackTrace();
+                } catch (NoSuchAlgorithmException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                } catch (InvalidParameterSpecException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                } catch (InvalidAlgorithmParameterException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                } catch (InvalidKeyException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                } catch (InvalidKeySpecException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+
+
+            }
+        };
+
+
+
+        Thread run_send_RTSP_dhrequest = new Thread(T_send_RTSP_dhrequest, "Run_send_RTSP_dhrequest");
+        run_send_RTSP_dhrequest.start();
+
+
+    }
+
+	public  byte[] aes_decrypt(byte[] ciphertext, String B_shared_key) throws  NoSuchAlgorithmException, InvalidKeyException, Throwable {
+        byte[] clearText;
+        byte[] cipherText = new byte[ciphertext.length];
+
+        int length=B_shared_key.length();
+        if(length>16 && length!=16){
+            B_shared_key=B_shared_key.substring(0, 15);
+        }
+        if(length<16 && length!=16){
+            for(int i=0;i<16-length;i++){
+                B_shared_key=B_shared_key+"0";
+            }
+        }
+
+        try {
+            int counter = 0;
+            while (counter < ciphertext.length) {
+                cipherText[counter] = (byte)ciphertext[counter];
+                counter++;
+            }
+            Cipher aes = Cipher.getInstance("AES/CBC/NoPadding", "SunJCE");
+            SecretKeySpec aesKey = new SecretKeySpec(B_shared_key.getBytes(), "AES");
+            aes.init(Cipher.DECRYPT_MODE, aesKey);
+            clearText = aes.update(cipherText);
+            System.out.println(new String(clearText, "ASCII"));
+            return clearText;
+        } catch (Exception e) { return null; }
+
+
+    }
+
+	public  byte[] rc4_decrypt(byte[] ciphertext, String B_shared_key)throws  NoSuchAlgorithmException, InvalidKeyException, Throwable {
+        byte[] clearText;
+        byte[] cipherText = new byte[ciphertext.length];
+
+        int length=B_shared_key.length();
+        if(length>16 && length!=16){
+            B_shared_key=B_shared_key.substring(0, 15);
+        }
+        if(length<16 && length!=16){
+            for(int i=0;i<16-length;i++){
+                B_shared_key=B_shared_key+"0";
+            }
+        }
+
+        try {
+            int counter = 0;
+            while (counter < ciphertext.length) {
+                cipherText[counter] = (byte)ciphertext[counter];
+                counter++;
+            }
+            Cipher rc4 = Cipher.getInstance("RC4");
+            SecretKeySpec rc4Key = new SecretKeySpec(B_shared_key.getBytes(), "RC4");
+            rc4.init(Cipher.DECRYPT_MODE, rc4Key);
+            clearText = rc4.update(cipherText);
+            //System.out.println(new String(clearText, "ASCII"));
+            return clearText;
+        } catch (Exception e) { return null; }
+
+
+    }
 
 }// end of Class Client
