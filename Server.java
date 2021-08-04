@@ -45,6 +45,7 @@ import javax.crypto.NoSuchPaddingException;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.spec.DHParameterSpec;
+import javax.crypto.spec.IvParameterSpec;
 
 import java.security.spec.X509EncodedKeySpec;
 import java.security.KeyFactory;
@@ -90,7 +91,7 @@ public class Server extends JFrame {
 	// ----------------
 	DatagramSocket RTPsocket; // socket to be used to send and receive UDP
 								// packets
-	// DatagramSocket RTPsocket_info; // socket to be used to send and receive UDP
+	DatagramSocket RTPsocket_info; // socket to be used to send and receive UDP
 								// packets
 
 	DatagramPacket senddp; // UDP packet containing the video frames
@@ -119,6 +120,7 @@ public class Server extends JFrame {
 	static int VIDEO_LENGTH = 500; // length of the video in frames
 
 	Timer timer; // timer used to send the images at the video frame rate
+	Timer timer1; // timer used to send the images at the video frame rate
 
 	byte[] buf; // buffer used to store the images to send to the client
 
@@ -164,8 +166,8 @@ public class Server extends JFrame {
 						// encrypt
 						byte[] EN_buf = new byte[buf.length];
 						if(EN_STATE == DHON) {
-							EN_buf = rc4_encrypt(buf, str_B_shared_key);
-							rtp_packet = new RTPpacket(MJPEG_TYPE, imagenb, imagenb * FRAME_PERIOD, EN_buf, image_length);
+							EN_buf = aes_encrypt(buf, str_B_shared_key);
+							rtp_packet = new RTPpacket(MJPEG_TYPE, imagenb, imagenb * FRAME_PERIOD, EN_buf, EN_buf.length);
 							System.out.println("rtp_packet: " + EN_buf);
 							System.out.println("rtp_packet length: " + rtp_packet.getlength());
 						} else {
@@ -206,58 +208,72 @@ public class Server extends JFrame {
             }
         };
 
-		// ActionListener infoListener = new ActionListener() {
-        //     public void actionPerformed(ActionEvent evt) {
-        //         if (imagenb < VIDEO_LENGTH) {
-		// 			// update current imagenb
+		ActionListener infoListener = new ActionListener() {
+            public void actionPerformed(ActionEvent evt) {
+                if (imagenb < VIDEO_LENGTH) {
+					// update current imagenb
 
-		// 			try {
+					try {
 						
 
-		// 				if(EN_STATE == DHON) {
-		// 					// EN_buf = aes_encrypt(buf, str_B_shared_key);
-		// 					String packet_info_bits = String.valueOf(image_length);
-		// 					byte[] EN_buf = new byte[packet_info_bits.length()];
-		// 					EN_buf = rc4_encrypt(packet_info_bits.getBytes(), str_B_shared_key);
-		// 					System.out.println("image_length" + packet_info_bits);
-		// 					senddp_info = new DatagramPacket(EN_buf, EN_buf.length, ClientIPAddr, 20000);
+						if(EN_STATE == DHON) {
+							// EN_buf = aes_encrypt(buf, str_B_shared_key);
+							String packet_info_bits = String.valueOf(image_length);
+							String num_pad = Integer.toHexString(16 - packet_info_bits.length());
+							for (int s=packet_info_bits.length(); s<16; s++){
+								packet_info_bits += num_pad;
+							}
+							System.out.println("before " + packet_info_bits);
+							byte[] EN_buf = new byte[packet_info_bits.length()];
+							System.out.println("before " + Arrays.toString(packet_info_bits.getBytes()));
+							EN_buf = aes_encrypt(packet_info_bits.getBytes(), str_B_shared_key);
+							System.out.println("after " + Arrays.toString(EN_buf));
+							System.out.println("image_length " + packet_info_bits);
+							System.out.println("EN_buf " + EN_buf);
+							senddp_info = new DatagramPacket(EN_buf, EN_buf.length, ClientIPAddr, 20000);
 
-		// 					RTPsocket_info.send(senddp_info);
-		// 					System.out.println("num: " + new String(EN_buf));
-		// 				} else {
-		// 					String packet_info_bits = String.valueOf(image_length);
-		// 					System.out.println("image_length" + packet_info_bits);
-		// 					senddp_info = new DatagramPacket(packet_info_bits.getBytes(), packet_info_bits.length(), ClientIPAddr, 20000);
+							RTPsocket_info.send(senddp_info);
+							System.out.println("num: " + new String(EN_buf));
+						} else {
+							String packet_info_bits = String.valueOf(image_length);
+							System.out.println("image_length" + packet_info_bits);
+							senddp_info = new DatagramPacket(packet_info_bits.getBytes(), packet_info_bits.length(), ClientIPAddr, 20000);
 
-		// 					RTPsocket_info.send(senddp_info);
-		// 					System.out.println("num: " + packet_info_bits);
-		// 				}
-		// 			} catch (Exception ex) {
-		// 				System.out.println("Exception caught: " + ex);
-		// 				System.exit(0);
-		// 			} catch (Throwable t) {
-		// 				t.printStackTrace();
-		// 			}
-		// 		} else {
-		// 			// if we have reached the end of the video file, stop the timer
-		// 			if (timer1 != null)  timer1.stop();
-		// 		}
-        //     }
-        // };
+							RTPsocket_info.send(senddp_info);
+							System.out.println("num: " + packet_info_bits);
+						}
+					} catch (Exception ex) {
+						System.out.println("Exception caught: " + ex);
+						ex.printStackTrace();
+						System.exit(0);
+					} catch (Throwable t) {
+						t.printStackTrace();
+					}
+				} else {
+					// if we have reached the end of the video file, stop the timer
+					if (timer1 != null)  timer1.stop();
+				}
+            }
+        };
 
 		// init Timer
 		timer = new Timer(FRAME_PERIOD, videoStreamer);
 		timer.setInitialDelay(0);
 		timer.setCoalesce(true);
 
+		timer1 = new Timer(FRAME_PERIOD, infoListener);
+		timer1.setInitialDelay(0);
+		timer1.setCoalesce(true);
+
 		// allocate memory for the sending buffer
-		buf = new byte[15000];
+		buf = new byte[15008];
 
 		// Handler to close the main window
 		addWindowListener(new WindowAdapter() {
 			public void windowClosing(WindowEvent e) {
 				// stop the timer and exit
 				timer.stop();
+				timer1.stop();
 				System.exit(0);
 			}
 		});
@@ -321,7 +337,7 @@ public class Server extends JFrame {
 
 					// init RTP socket
 					theServer.RTPsocket = new DatagramSocket();
-					// theServer.RTPsocket_info = new DatagramSocket(23000);
+					theServer.RTPsocket_info = new DatagramSocket(23000);
 				}
 			}
 
@@ -352,6 +368,7 @@ public class Server extends JFrame {
 					theServer.send_RTSP_response();
 					// start timer
 					theServer.timer.start();
+					theServer.timer1.start();
 					// update state
 					state = PLAYING;
 					System.out.println("New RTSP state: PLAYING");
@@ -360,6 +377,7 @@ public class Server extends JFrame {
 					theServer.send_RTSP_response();
 					// stop timer
 					theServer.timer.stop();
+					theServer.timer1.stop();
 					// update state
 					state = READY;
 					System.out.println("New RTSP state: READY");
@@ -368,10 +386,11 @@ public class Server extends JFrame {
 					theServer.send_RTSP_response();
 					// stop timer
 					theServer.timer.stop();
+					theServer.timer1.stop();
 					// close sockets
 					theServer.RTSPsocket.close();
 					theServer.RTPsocket.close();
-					// theServer.RTPsocket_info.close();
+					theServer.RTPsocket_info.close();
 
 					System.exit(0);
 				}
@@ -531,10 +550,11 @@ public class Server extends JFrame {
         byte[] clearText_;
         byte[] cipherText;
         byte[] returnText = new byte[clearText.length];
+		String IV = "AAAAAAAAAAAAAAAA";
         int length=B_shared_key.length();
 		System.out.println("B shared Key length : " + length);
         if(length>16 && length!=16){
-            B_shared_key=B_shared_key.substring(0, 15);
+            B_shared_key=B_shared_key.substring(0, 16);
         }
         if(length<16 && length!=16){
             for(int i=0;i<16-length;i++){
@@ -542,26 +562,32 @@ public class Server extends JFrame {
             }
         }
 
+		// System.out.println("Key: " + Arrays.toString(B_shared_key.getBytes()));
+
         try {
             Cipher aes = Cipher.getInstance("AES/CBC/NoPadding", "SunJCE");
-            SecretKeySpec aesKey = new SecretKeySpec(B_shared_key.getBytes(), "AES");
-            aes.init(Cipher.ENCRYPT_MODE, aesKey);
-            cipherText = aes.update(clearText);
-            int counter = 0;
-            while (counter < cipherText.length) {
-                returnText[counter] = cipherText[counter];
-                counter++;
-            }
-            return returnText;
+            SecretKeySpec aesKey = new SecretKeySpec(B_shared_key.getBytes("UTF-8"), "AES");
+            aes.init(Cipher.ENCRYPT_MODE, aesKey, new IvParameterSpec(IV.getBytes("UTF-8")));
+            cipherText = aes.doFinal(clearText);
+            // int counter = 0;
+            // while (counter < cipherText.length) {
+            //     returnText[counter] = cipherText[counter];
+            //     counter++;
+            // }
+            return cipherText;
         } catch (NoSuchAlgorithmException e) {
             System.out.println("E: NoSuchAlgorithmException");
+			e.printStackTrace();
             return null;
         } catch (InvalidKeyException e) {
 			System.out.println("E: InvalidKeyException");
+			e.printStackTrace();
             return null;
 		} catch (Exception e) {
+			e.printStackTrace();
 			return null;
 		} catch(Throwable t) {
+			t.printStackTrace();
 			return null;
 		}
     }

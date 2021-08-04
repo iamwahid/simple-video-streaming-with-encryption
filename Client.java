@@ -49,6 +49,7 @@ import javax.crypto.interfaces.DHPublicKey;
 import java.security.spec.InvalidParameterSpecException;
 
 import javax.crypto.spec.DHParameterSpec;
+import javax.crypto.spec.IvParameterSpec;
 import java.io.*;
 import java.security.spec.X509EncodedKeySpec;
 import java.security.KeyFactory;
@@ -238,7 +239,7 @@ public class Client {
 
 		// allocate enough memory for the buffer used to receive data from the
 		// server
-		buf = new byte[15000];
+		buf = new byte[15008];
 		buf1 = new byte[8];
 		keysize = "512";
 	}
@@ -430,12 +431,17 @@ public class Client {
 		public void actionPerformed(ActionEvent e) {
 
 			// Construct a DatagramPacket to receive data from the UDP socket
+			byte[] ReceiveData = new byte[16];
+			rcvdp_info = new DatagramPacket(ReceiveData, ReceiveData.length);
 			rcvdp = new DatagramPacket(buf, buf.length);
 			int i,j;
-			byte[] receivedDataDecrypted = new byte[15000];
+			byte[] receivedDataDecrypted = new byte[15008];
+			byte[] receivedInfoDecrypted = new byte[1024];
 
 			try {
 				// receive the DP from the socket:
+				RTPsocket_info.receive(rcvdp_info);
+
 				RTPsocket.receive(rcvdp);
 				RTPpacket rtp_packet;
 				int image_length;
@@ -443,15 +449,30 @@ public class Client {
 				byte[] payload;
 
 				if (EN_STATE == DHON) {
+					String info;
+					System.out.println("before " + Arrays.toString(rcvdp_info.getData()));
+					System.out.println("before " + rcvdp_info.getLength());
+					receivedInfoDecrypted = aes_decrypt(rcvdp_info.getData(), dh_shared_secret);
+					info = new String(receivedInfoDecrypted);
+					info = info.replace(info.substring(info.length() - 1), "");
+					System.out.println("after " + info);
 					// load received video frame data
 					rtp_packet = new RTPpacket(rcvdp.getData(), rcvdp.getLength());
-					payload_length = rtp_packet.getpayload_length();
-					System.out.println("l: " + payload_length);
-					payload = new byte[payload_length];
+					payload_length = Integer.parseInt(info);;
+					System.out.println("l: " + rtp_packet.getpayload_length());
+					payload = new byte[rtp_packet.getpayload_length()];
 					rtp_packet.getpayload(payload);
-					
+
+					byte[] padded = new byte[15008];
+					int num_pad = padded.length - payload.length;
+					byte pad = (byte) num_pad;
+					Arrays.fill( padded, pad );
+					for (int s=0; s<payload.length; s++){
+						padded[s] = payload[s];
+					}
+					System.out.println("padded: " + padded.length);
 					// decrypt video frame data
-					receivedDataDecrypted = rc4_decrypt(payload, dh_shared_secret);
+					receivedDataDecrypted = aes_decrypt(padded, dh_shared_secret);
 					// reassign payload
 					payload = receivedDataDecrypted;
 				} else {
@@ -473,7 +494,7 @@ public class Client {
 					rtp_packet.getpayload(payload);
 				}
 
-				System.out.println("payload: " + payload);
+				// System.out.println("payload: " + payload);
 				System.out.println("payload length: " + payload_length);
 
 
@@ -741,16 +762,19 @@ public class Client {
 	public  byte[] aes_decrypt(byte[] ciphertext, String B_shared_key) throws  NoSuchAlgorithmException, InvalidKeyException, Throwable {
         byte[] clearText;
         byte[] cipherText = new byte[ciphertext.length];
+		String IV = "AAAAAAAAAAAAAAAA";
 
         int length=B_shared_key.length();
         if(length>16 && length!=16){
-            B_shared_key=B_shared_key.substring(0, 15);
+            B_shared_key=B_shared_key.substring(0, 16);
         }
         if(length<16 && length!=16){
             for(int i=0;i<16-length;i++){
                 B_shared_key=B_shared_key+"0";
             }
         }
+		// System.out.println("Key: " + Arrays.toString(B_shared_key.getBytes()));
+
 
         try {
             int counter = 0;
@@ -759,12 +783,26 @@ public class Client {
                 counter++;
             }
             Cipher aes = Cipher.getInstance("AES/CBC/NoPadding", "SunJCE");
-            SecretKeySpec aesKey = new SecretKeySpec(B_shared_key.getBytes(), "AES");
-            aes.init(Cipher.DECRYPT_MODE, aesKey);
-            clearText = aes.update(cipherText);
-            System.out.println(new String(clearText, "ASCII"));
+            SecretKeySpec aesKey = new SecretKeySpec(B_shared_key.getBytes("UTF-8"), "AES");
+            aes.init(Cipher.DECRYPT_MODE, aesKey, new IvParameterSpec(IV.getBytes("UTF-8")));
+            clearText = aes.doFinal(cipherText);
+            // System.out.println(new String(clearText, "ASCII"));
             return clearText;
-        } catch (Exception e) { return null; }
+        } catch (NoSuchAlgorithmException e) {
+            System.out.println("E: NoSuchAlgorithmException");
+			e.printStackTrace();
+            return null;
+        } catch (InvalidKeyException e) {
+			System.out.println("E: InvalidKeyException");
+			e.printStackTrace();
+            return null;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return null;
+		} catch(Throwable t) {
+			t.printStackTrace();
+			return null;
+		}
 
 
     }
