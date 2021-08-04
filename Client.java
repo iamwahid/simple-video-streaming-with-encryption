@@ -430,52 +430,52 @@ public class Client {
 		public void actionPerformed(ActionEvent e) {
 
 			// Construct a DatagramPacket to receive data from the UDP socket
-			byte[] receiveData =new byte[1024];
 			rcvdp = new DatagramPacket(buf, buf.length);
-			rcvdp_info = new DatagramPacket(receiveData, receiveData.length);
 			int i,j;
-			// byte[] ByteToInput=new byte[];
-			byte[] receiveDataByte;
+			byte[] receivedDataDecrypted = new byte[15000];
 
 			try {
 				// receive the DP from the socket:
 				RTPsocket.receive(rcvdp);
-				RTPsocket_info.receive(rcvdp_info);
 				RTPpacket rtp_packet;
-				RTPpacket rtp_packet_info = new RTPpacket(rcvdp_info.getData(), rcvdp_info.getLength());
+				int image_length;
+				int payload_length;
+				byte[] payload;
 
-				if (EN_STATE == DHON) {//받은 packet안에 data를 rc4_decrypt 메소드를 이용해서 복호화.
-					receiveDataByte = rc4_decrypt(rcvdp.getData(), dh_shared_secret);
-					// int a = rcvdp.getLength();
-					// // receiveDataByte = aes_decrypt(rcvdp.getData(), dh_shared_secret);
-					// for(i=0,j=0;i<a;i++,j++){
-                    //         ByteToInput[j] = receiveDataByte[i];
-                    // }
-					rtp_packet = new RTPpacket(receiveDataByte, receiveDataByte.length);
+				if (EN_STATE == DHON) {
+					// load received video frame data
+					rtp_packet = new RTPpacket(rcvdp.getData(), rcvdp.getLength());
+					payload_length = rtp_packet.getpayload_length();
+					System.out.println("l: " + payload_length);
+					payload = new byte[payload_length];
+					rtp_packet.getpayload(payload);
+					
+					// decrypt video frame data
+					receivedDataDecrypted = rc4_decrypt(payload, dh_shared_secret);
+					// reassign payload
+					payload = receivedDataDecrypted;
 				} else {
 					// create an RTPpacket object from the DP
-					receiveDataByte = rcvdp.getData();
+					receivedDataDecrypted = rcvdp.getData();
 					rtp_packet = new RTPpacket(rcvdp.getData(), rcvdp.getLength());
+					// print important header fields of the RTP packet received:
+					/*System.out.println("Got RTP packet with SeqNum # "
+							+ rtp_packet.getsequencenumber() + " TimeStamp "
+							+ rtp_packet.gettimestamp() + " ms, of type "
+							+ rtp_packet.getpayloadtype());*/
+
+					// print header bitstream:
+					// rtp_packet.printheader();
+
+					// get the payload bitstream from the RTPpacket object
+					payload_length = rtp_packet.getpayload_length();
+					payload = new byte[payload_length];
+					rtp_packet.getpayload(payload);
 				}
 
-				// print important header fields of the RTP packet received:
-				/*System.out.println("Got RTP packet with SeqNum # "
-						+ rtp_packet.getsequencenumber() + " TimeStamp "
-						+ rtp_packet.gettimestamp() + " ms, of type "
-						+ rtp_packet.getpayloadtype());*/
+				System.out.println("payload: " + payload);
+				System.out.println("payload length: " + payload_length);
 
-				// print header bitstream:
-				// rtp_packet.printheader();
-
-				// get the payload bitstream from the RTPpacket object
-				int payload_length = rtp_packet.getpayload_length();
-				byte[] payload = new byte[payload_length];
-				rtp_packet.getpayload(payload);
-
-				int info_length = rtp_packet_info.getpayload_length();
-				System.out.println("info_length: " + info_length);
-				byte[] info = new byte[info_length];
-				rtp_packet_info.getpayload(info);
 
 				// get an Image object from the payload bitstream
 				Toolkit toolkit = Toolkit.getDefaultToolkit();
@@ -485,9 +485,8 @@ public class Client {
 				// display the image as an ImageIcon object
 				icon = new ImageIcon(image);
 				iconLabel.setIcon(icon);
-				System.out.println("payload: " + payload_length);
 			} catch (InterruptedIOException iioe) {
-				// System.out.println("Nothing to read");
+				System.out.println("Nothing to read");
 			} catch (IOException ioe) {
 				System.out.println("Exception caught: " + ioe);
 			} catch (Throwable t) {

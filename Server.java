@@ -90,7 +90,7 @@ public class Server extends JFrame {
 	// ----------------
 	DatagramSocket RTPsocket; // socket to be used to send and receive UDP
 								// packets
-	DatagramSocket RTPsocket_info; // socket to be used to send and receive UDP
+	// DatagramSocket RTPsocket_info; // socket to be used to send and receive UDP
 								// packets
 
 	DatagramPacket senddp; // UDP packet containing the video frames
@@ -139,6 +139,7 @@ public class Server extends JFrame {
 
 	final static String CRLF = "\r\n";
 
+	int image_length;
 	// --------------------------------
 	// Constructor
 	// --------------------------------
@@ -157,21 +158,21 @@ public class Server extends JFrame {
 
 					try {
 						// get next frame to send from the video, as well as its size
-						int image_length = video.getnextframe(buf);
+						image_length = video.getnextframe(buf);
 						RTPpacket rtp_packet;
 
 						// encrypt
-						byte[] EN_buf;
+						byte[] EN_buf = new byte[buf.length];
 						if(EN_STATE == DHON) {
 							EN_buf = rc4_encrypt(buf, str_B_shared_key);
-							// EN_buf = aes_encrypt(buf, str_B_shared_key);
-							rtp_packet = new RTPpacket(MJPEG_TYPE, imagenb, imagenb * FRAME_PERIOD, EN_buf, EN_buf.length);
-							System.out.println("buf: " + buf);
-							System.out.println("EN_buf: " + EN_buf);
+							rtp_packet = new RTPpacket(MJPEG_TYPE, imagenb, imagenb * FRAME_PERIOD, EN_buf, image_length);
+							System.out.println("rtp_packet: " + EN_buf);
+							System.out.println("rtp_packet length: " + rtp_packet.getlength());
 						} else {
 							// Builds an RTPpacket object containing the frame
 							rtp_packet = new RTPpacket(MJPEG_TYPE, imagenb, imagenb * FRAME_PERIOD, buf, image_length);
-							// System.out.println("Exception caught: " + image_length);
+							System.out.println("rtp_packet: " + buf);
+							System.out.println("rtp_packet length: " + rtp_packet.getlength());
 						}
 
 						// get to total length of the full rtp packet to send
@@ -187,13 +188,6 @@ public class Server extends JFrame {
 								ClientIPAddr, RTP_dest_port);
 						RTPsocket.send(senddp);
 
-						String packet_info_bits = String.valueOf(image_length);
-						senddp_info = new DatagramPacket(packet_info_bits.getBytes(), packet_info_bits.length(), ClientIPAddr, 20000);
-
-						System.out.println("num: " + image_length);
-						RTPsocket_info.send(senddp_info);
-
-						System.out.println("Send frame #"+imagenb);
 						// print the header bitstream
 						// rtp_packeer();
 
@@ -211,6 +205,45 @@ public class Server extends JFrame {
 				}
             }
         };
+
+		// ActionListener infoListener = new ActionListener() {
+        //     public void actionPerformed(ActionEvent evt) {
+        //         if (imagenb < VIDEO_LENGTH) {
+		// 			// update current imagenb
+
+		// 			try {
+						
+
+		// 				if(EN_STATE == DHON) {
+		// 					// EN_buf = aes_encrypt(buf, str_B_shared_key);
+		// 					String packet_info_bits = String.valueOf(image_length);
+		// 					byte[] EN_buf = new byte[packet_info_bits.length()];
+		// 					EN_buf = rc4_encrypt(packet_info_bits.getBytes(), str_B_shared_key);
+		// 					System.out.println("image_length" + packet_info_bits);
+		// 					senddp_info = new DatagramPacket(EN_buf, EN_buf.length, ClientIPAddr, 20000);
+
+		// 					RTPsocket_info.send(senddp_info);
+		// 					System.out.println("num: " + new String(EN_buf));
+		// 				} else {
+		// 					String packet_info_bits = String.valueOf(image_length);
+		// 					System.out.println("image_length" + packet_info_bits);
+		// 					senddp_info = new DatagramPacket(packet_info_bits.getBytes(), packet_info_bits.length(), ClientIPAddr, 20000);
+
+		// 					RTPsocket_info.send(senddp_info);
+		// 					System.out.println("num: " + packet_info_bits);
+		// 				}
+		// 			} catch (Exception ex) {
+		// 				System.out.println("Exception caught: " + ex);
+		// 				System.exit(0);
+		// 			} catch (Throwable t) {
+		// 				t.printStackTrace();
+		// 			}
+		// 		} else {
+		// 			// if we have reached the end of the video file, stop the timer
+		// 			if (timer1 != null)  timer1.stop();
+		// 		}
+        //     }
+        // };
 
 		// init Timer
 		timer = new Timer(FRAME_PERIOD, videoStreamer);
@@ -288,7 +321,7 @@ public class Server extends JFrame {
 
 					// init RTP socket
 					theServer.RTPsocket = new DatagramSocket();
-					theServer.RTPsocket_info = new DatagramSocket(23000);
+					// theServer.RTPsocket_info = new DatagramSocket(23000);
 				}
 			}
 
@@ -338,7 +371,7 @@ public class Server extends JFrame {
 					// close sockets
 					theServer.RTSPsocket.close();
 					theServer.RTPsocket.close();
-					theServer.RTPsocket_info.close();
+					// theServer.RTPsocket_info.close();
 
 					System.exit(0);
 				}

@@ -36,8 +36,7 @@ public class RTPpacket {
 	//--------------------------
 	//Constructor of an RTPpacket object from header fields and payload bitstream
 	//--------------------------
-	public RTPpacket(int PType, int Framenb, int Time, byte[] data,
-			int data_length) {
+	public RTPpacket(int PType, int Framenb, int Time, byte[] data, int data_length) {
 		//fill by default header fields:
 		Version = 2;
 		Padding = 0;
