@@ -134,6 +134,9 @@ public class Client {
     private String CRLF = "\r\n";
     private String dh_shared_secret;
 
+	//Encryption
+	private static String encryptionKey = "AESEncryption123";
+
 	// GUI
 	// ----
 	JFrame f = new JFrame("Client");
@@ -219,12 +222,16 @@ public class Client {
 
 		// get server RTSP port and IP address from the command line
 		// ------------------
-		int RTSP_server_port = Integer.parseInt(argv[1]);
 		String ServerHost = argv[0];
+		int RTSP_server_port = Integer.parseInt(argv[1]);
 		InetAddress ServerIPAddr = InetAddress.getByName(ServerHost);
 
+		if (argv[2] != null) 
+			encryptionKey = String.valueOf(argv[2]);
+
 		// get video filename to request:
-		VideoFileName = argv[2];
+		VideoFileName = "movie.Mjpeg";
+		
 
 		// Establish a TCP connection with the server to exchange RTSP messages
 		// ------------------
@@ -291,6 +298,7 @@ public class Client {
 				else {
 					// change RTSP state and print new state
 					state = READY;
+					EN_STATE = DHON;
 					// System.out.println("New RTSP state: ....");
 				}
 			}
@@ -415,13 +423,17 @@ public class Client {
 					String info;
 					System.out.println("before " + Arrays.toString(rcvdp_info.getData()));
 					System.out.println("before " + rcvdp_info.getLength());
-					receivedInfoDecrypted = aes_decrypt(rcvdp_info.getData(), dh_shared_secret);
+					receivedInfoDecrypted = aes_decrypt(rcvdp_info.getData(), encryptionKey);
 					info = new String(receivedInfoDecrypted);
 					info = info.replace(info.substring(info.length() - 1), "");
 					System.out.println("after " + info);
 					// load received video frame data
 					rtp_packet = new RTPpacket(rcvdp.getData(), rcvdp.getLength());
-					payload_length = Integer.parseInt(info);;
+					try {
+						payload_length = Integer.parseInt(info);
+					} catch (Exception exc) {
+						payload_length = 6000;
+					}
 					System.out.println("l: " + rtp_packet.getpayload_length());
 					payload = new byte[rtp_packet.getpayload_length()];
 					rtp_packet.getpayload(payload);
@@ -435,7 +447,7 @@ public class Client {
 					}
 					System.out.println("padded: " + padded.length);
 					// decrypt video frame data
-					receivedDataDecrypted = aes_decrypt(padded, dh_shared_secret);
+					receivedDataDecrypted = aes_decrypt(padded, encryptionKey);
 					// reassign payload
 					payload = receivedDataDecrypted;
 				} else {

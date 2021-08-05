@@ -77,6 +77,9 @@ public class Server extends JFrame {
     final static int PAUSE = 5;
     final static int TEARDOWN = 6;
 
+	// Encryption
+	private static String encryptionKey = "AESEncryption123";
+
 	// RTP variables:
 	// ----------------
 	DatagramSocket RTPsocket; // socket to be used to send and receive UDP
@@ -156,7 +159,7 @@ public class Server extends JFrame {
 						// encrypt
 						byte[] EN_buf = new byte[buf.length];
 						if(EN_STATE == DHON) {
-							EN_buf = aes_encrypt(buf, str_B_shared_key);
+							EN_buf = aes_encrypt(buf, encryptionKey);
 							rtp_packet = new RTPpacket(MJPEG_TYPE, imagenb, imagenb * FRAME_PERIOD, EN_buf, EN_buf.length);
 							System.out.println("rtp_packet: " + EN_buf);
 							System.out.println("rtp_packet length: " + rtp_packet.getlength());
@@ -215,7 +218,7 @@ public class Server extends JFrame {
 							System.out.println("before " + packet_info_bits);
 							byte[] EN_buf = new byte[packet_info_bits.length()];
 							System.out.println("before " + Arrays.toString(packet_info_bits.getBytes()));
-							EN_buf = aes_encrypt(packet_info_bits.getBytes(), str_B_shared_key);
+							EN_buf = aes_encrypt(packet_info_bits.getBytes(), encryptionKey);
 							System.out.println("after " + Arrays.toString(EN_buf));
 							System.out.println("image_length " + packet_info_bits);
 							System.out.println("EN_buf " + EN_buf);
@@ -285,6 +288,8 @@ public class Server extends JFrame {
 
 		// get RTSP socket port from the command line
 		int RTSPport = Integer.parseInt(argv[0]);
+		if (argv[1] != null) 
+			encryptionKey = String.valueOf(argv[1]);
 
 		try {
 			// Initiate TCP connection with the client for the RTSP session
@@ -319,7 +324,8 @@ public class Server extends JFrame {
 
 					// Send response
 					theServer.send_RTSP_response();
-					EN_STATE = CLEAR;
+					// EN_STATE = CLEAR;
+					EN_STATE = DHON;
 
 					// init the VideoStream object:
 					theServer.video = new VideoStream(VideoFileName);
