@@ -60,16 +60,7 @@ import java.lang.Throwable;
 
 public class Server extends JFrame {
 
-	static String s_RTSP_ID ; //ID of the RTSP session
-    static String s_RTSPSeqNb; //Sequence number of RTSP messages within the session
-	private String str_keysize;
-    private String str_prime;
-    private String str_alpha;
-    private String str_A_Pubkey;
     private String str_B_shared_key;
-    private String str_M_public_key;
-    private String str_Rec_Public_Key;
-    static PublicKey Client_RSAPublicKey;
 
 	//rtsp states
     private static int EN_STATE;
@@ -85,7 +76,6 @@ public class Server extends JFrame {
     final static int PLAY = 4;
     final static int PAUSE = 5;
     final static int TEARDOWN = 6;
-    final static int DHSETUP = 8;
 
 	// RTP variables:
 	// ----------------
@@ -217,7 +207,6 @@ public class Server extends JFrame {
 						
 
 						if(EN_STATE == DHON) {
-							// EN_buf = aes_encrypt(buf, str_B_shared_key);
 							String packet_info_bits = String.valueOf(image_length);
 							String num_pad = Integer.toHexString(16 - packet_info_bits.length());
 							for (int s=packet_info_bits.length(); s<16; s++){
@@ -346,23 +335,6 @@ public class Server extends JFrame {
 				// parse the request
 				request_type = theServer.parse_RTSP_request(); // blocking
 
-				// request = DHSETUP
-				if (request_type == DHSETUP) {
-					// done = true;
-
-					//update RTSP state
-					state = READY;
-					System.out.println("New RTSP state: DH READY");
-
-					//Send response
-					theServer.DH_Process_send_RTSP_response();
-					EN_STATE = DHON;
-
-					//init the VideoStream object
-
-				}
-				// DHSETUP end
-
 				if ((request_type == PLAY) && (state == READY)) {
 					// send back response
 					theServer.send_RTSP_response();
@@ -419,11 +391,7 @@ public class Server extends JFrame {
 			// convert to request_type structure:
 			if ((new String(request_type_string)).compareTo("SETUP") == 0)
 				request_type = SETUP;
-			else if ((new String(request_type_string)).compareTo("DHSETUP") == 0) {
-				request_type = DHSETUP;
-                str_keysize = tokens.nextToken();
-                str_prime = tokens.nextToken();
-			} else if ((new String(request_type_string)).compareTo("PLAY") == 0)
+			else if ((new String(request_type_string)).compareTo("PLAY") == 0)
 				request_type = PLAY;
 			else if ((new String(request_type_string)).compareTo("PAUSE") == 0)
 				request_type = PAUSE;
@@ -439,13 +407,8 @@ public class Server extends JFrame {
 			String SeqNumLine = RTSPBufferedReader.readLine();
 			System.out.println(SeqNumLine);
 			tokens = new StringTokenizer(SeqNumLine);
-			if ((new String(request_type_string)).compareTo("DHSETUP") == 0) {
-                tokens.nextToken();
-                str_alpha = tokens.nextToken();
-            } else {
-                tokens.nextToken();
-                RTSPSeqNb = Integer.parseInt(tokens.nextToken());
-            }
+			tokens.nextToken();
+			RTSPSeqNb = Integer.parseInt(tokens.nextToken());
 
 			// get LastLine
 			String LastLine = RTSPBufferedReader.readLine();
@@ -460,15 +423,6 @@ public class Server extends JFrame {
 				System.out.println("RTP_dest_port : "+ RTP_dest_port);
 			}
 
-			if (request_type == DHSETUP)
-            {
-                //extract RTP_dest_port from LastLine
-                tokens = new StringTokenizer(LastLine);
-
-                tokens.nextToken(); //skip unused stuff
-                str_A_Pubkey = tokens.nextToken();
-				System.out.println(str_A_Pubkey);
-            }
 			// else LastLine will be the SessionId line ... do not check for
 			// now.
 		} catch (Exception ex) {
@@ -493,58 +447,6 @@ public class Server extends JFrame {
 			System.exit(0);
 		}
 	}
-
-	private static BigInteger getSharedKey(PublicKey pubKey, PrivateKey privKey) throws NoSuchAlgorithmException, InvalidKeyException {
-        KeyAgreement ka = KeyAgreement.getInstance("DH");
-        ka.init(privKey);
-        ka.doPhase(pubKey, true);
-        byte[] b = ka.generateSecret();
-        BigInteger secretKey = new BigInteger(b);
-        return secretKey;
-    }
-
-	//------------------------------------
-    //Send DH RTSP Response
-    //------------------------------------
-    private void DH_Process_send_RTSP_response()
-    {
-
-        try{
-            BigInteger prime = new BigInteger(str_prime);
-            BigInteger alpha = new BigInteger(str_alpha);
-            KeyPairGenerator bkpg = KeyPairGenerator.getInstance("DH");
-            DHParameterSpec param = new DHParameterSpec(prime, alpha);
-            bkpg.initialize(param);
-            KeyPair B_kp = bkpg.generateKeyPair(); //public key (Yb) and private key (Xb) of B
-            System.out.println("VR: Keypair OK");
-            byte[] publicBytes = Base64.getDecoder().decode(str_A_Pubkey.getBytes());
-            X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicBytes);
-            KeyFactory keyFactory = KeyFactory.getInstance("DH");
-            PublicKey A_publicKey = keyFactory.generatePublic(keySpec);
-            final BigInteger B_SharedSecret = getSharedKey(A_publicKey, B_kp.getPrivate());
-            str_B_shared_key = B_SharedSecret.toString();
-            //send blind key
-            System.out.println("VS: S's shared DH key = " + str_B_shared_key);
-            final BigInteger B_PubKey = ((DHPublicKey) B_kp.getPublic()).getY();
-            final String S_B_PubKey = Base64.getEncoder().encodeToString(B_kp.getPublic().getEncoded());
-            // final String reply_message = "2" + "$$" + S_B_PubKey + "$$1111" +CRLF;
-
-            RTSPBufferedWriter.write("RTSP/1.0 200 OK"+'\n');
-            RTSPBufferedWriter.flush();
-            RTSPBufferedWriter.write("CSeq: " + S_B_PubKey + '\n');
-            RTSPBufferedWriter.flush();
-            s_RTSP_ID= String.valueOf(RTSP_ID);
-            RTSPBufferedWriter.write("Session: " + s_RTSP_ID + '\n');
-            RTSPBufferedWriter.flush();
-            System.out.println("VR: after RTSPBufferedWriter.write(Session:  + RTSP_ID + CRLF)  ");
-            //System.out.println("RTSP Server - Sent response to Client.");
-        }
-        catch(Exception ex)
-        {
-            System.out.println("Exception caught: "+ex);
-            // System.exit(0);
-        }
-    }
 
 	public  byte[] aes_encrypt(byte[] clearText, String B_shared_key) throws  NoSuchAlgorithmException, InvalidKeyException, Throwable {
         byte[] clearText_;
@@ -590,33 +492,5 @@ public class Server extends JFrame {
 			t.printStackTrace();
 			return null;
 		}
-    }
-
-	public byte[] rc4_encrypt(byte[] clearText, String B_shared_key)throws  NoSuchAlgorithmException, InvalidKeyException, Throwable {
-        byte[] clearText_;
-        byte[] cipherText;
-        byte[] returnText = new byte[clearText.length];
-        int length=B_shared_key.length();
-        if(length>16 && length!=16){
-            B_shared_key=B_shared_key.substring(0, 15);
-        }
-        if(length<16 && length!=16){
-            for(int i=0;i<16-length;i++){
-                B_shared_key=B_shared_key+"0";
-            }
-        }
-
-        try {
-            Cipher rc4 = Cipher.getInstance("RC4");
-            SecretKeySpec rc4Key = new SecretKeySpec(B_shared_key.getBytes(), "RC4");
-            rc4.init(Cipher.ENCRYPT_MODE, rc4Key);
-            cipherText = rc4.update(clearText);
-            int counter = 0;
-            while (counter < cipherText.length) {
-                returnText[counter] = cipherText[counter];
-                counter++;
-            }
-            return returnText;
-        } catch (Exception e) { return null; }
     }
 }
