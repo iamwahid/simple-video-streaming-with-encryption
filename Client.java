@@ -157,6 +157,10 @@ public class Client {
 
 	ImageIcon icon;
 
+	//Partial Encrypt
+	int imagenb = 0;
+	int encryption_threshold = 20;
+
 	// Video constants:
 	// ------------------
 	static int MJPEG_TYPE = 26; // RTP payload type for MJPEG video
@@ -419,7 +423,8 @@ public class Client {
 				int payload_length;
 				byte[] payload;
 
-				if (EN_STATE == DHON) {
+				if (EN_STATE == DHON && imagenb < encryption_threshold) {
+					imagenb++;
 					String info;
 					System.out.println("before " + Arrays.toString(rcvdp_info.getData()));
 					System.out.println("before " + rcvdp_info.getLength());
@@ -514,6 +519,15 @@ public class Client {
 
 				String SessionLine = RTSPBufferedReader.readLine();
 				System.out.println("SessionLine: " + SessionLine);
+
+				if (state == INIT && EN_STATE != DHON) {
+					String FrameLengthLine = RTSPBufferedReader.readLine();
+					System.out.println("FrameLengthLine: " + FrameLengthLine);
+					tokens = new StringTokenizer(FrameLengthLine);
+					tokens.nextToken();
+					int VIDEO_LENGTH = Integer.parseInt(tokens.nextToken());
+					encryption_threshold = VIDEO_LENGTH / 2;
+				}
 
 				// if state == INIT gets the Session Id from the SessionLine
 				tokens = new StringTokenizer(SessionLine);

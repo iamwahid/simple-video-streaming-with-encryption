@@ -158,7 +158,7 @@ public class Server extends JFrame {
 
 						// encrypt
 						byte[] EN_buf = new byte[buf.length];
-						if(EN_STATE == DHON) {
+						if(EN_STATE == DHON && imagenb < (VIDEO_LENGTH/2)) {
 							EN_buf = aes_encrypt(buf, encryptionKey);
 							rtp_packet = new RTPpacket(MJPEG_TYPE, imagenb, imagenb * FRAME_PERIOD, EN_buf, EN_buf.length);
 							System.out.println("rtp_packet: " + EN_buf);
@@ -446,6 +446,9 @@ public class Server extends JFrame {
 			RTSPBufferedWriter.write("RTSP/1.0 200 OK" + CRLF);
 			RTSPBufferedWriter.write("CSeq: " + RTSPSeqNb + CRLF);
 			RTSPBufferedWriter.write("Session: " + RTSP_ID + CRLF);
+			if (state == READY && EN_STATE != DHON) {
+				RTSPBufferedWriter.write("FrameLength: " + VIDEO_LENGTH + CRLF);
+			}
 			RTSPBufferedWriter.flush();
 			// System.out.println("RTSP Server - Sent response to Client.");
 		} catch (Exception ex) {
