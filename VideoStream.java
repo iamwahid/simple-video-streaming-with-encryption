@@ -31,7 +31,7 @@ public class VideoStream {
 
 		//read current frame length
 		fis.read(frame_length, 0, 5);
-		System.out.println(frame_length);
+		// System.out.println(frame_length);
 		//transform frame_length to integer
 		length_string = new String(frame_length);
 		length = Integer.parseInt(length_string);

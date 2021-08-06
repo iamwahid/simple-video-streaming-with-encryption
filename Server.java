@@ -158,16 +158,17 @@ public class Server extends JFrame {
 
 						// encrypt
 						byte[] EN_buf = new byte[buf.length];
-						if(EN_STATE == DHON && imagenb < (VIDEO_LENGTH/2)) {
+						// encrypt half of video frame
+						if(EN_STATE == DHON && imagenb < (VIDEO_LENGTH/2)) { 
 							EN_buf = aes_encrypt(buf, encryptionKey);
 							rtp_packet = new RTPpacket(MJPEG_TYPE, imagenb, imagenb * FRAME_PERIOD, EN_buf, EN_buf.length);
-							System.out.println("rtp_packet: " + EN_buf);
-							System.out.println("rtp_packet length: " + rtp_packet.getlength());
+							System.out.println("sent packet bytes: " + EN_buf + " (encrypted)");
+							System.out.println("sent packet length: " + rtp_packet.getlength());
 						} else {
 							// Builds an RTPpacket object containing the frame
 							rtp_packet = new RTPpacket(MJPEG_TYPE, imagenb, imagenb * FRAME_PERIOD, buf, image_length);
-							System.out.println("rtp_packet: " + buf);
-							System.out.println("rtp_packet length: " + rtp_packet.getlength());
+							System.out.println("sent packet bytes: " + buf + " (non-encrypted)");
+							System.out.println("sent packet length: " + rtp_packet.getlength());
 						}
 
 						// get to total length of the full rtp packet to send
@@ -201,38 +202,42 @@ public class Server extends JFrame {
             }
         };
 
+		// for sending frame length
 		ActionListener infoListener = new ActionListener() {
             public void actionPerformed(ActionEvent evt) {
                 if (imagenb < VIDEO_LENGTH) {
-					// update current imagenb
+					
 
 					try {
 						
 
 						if(EN_STATE == DHON) {
 							String packet_info_bits = String.valueOf(image_length);
+							
+							// padding before encryption, using PKCS5Padding manually
 							String num_pad = Integer.toHexString(16 - packet_info_bits.length());
 							for (int s=packet_info_bits.length(); s<16; s++){
 								packet_info_bits += num_pad;
 							}
-							System.out.println("before " + packet_info_bits);
+
+							// System.out.println("before " + packet_info_bits);
 							byte[] EN_buf = new byte[packet_info_bits.length()];
-							System.out.println("before " + Arrays.toString(packet_info_bits.getBytes()));
+							// System.out.println("before " + Arrays.toString(packet_info_bits.getBytes()));
 							EN_buf = aes_encrypt(packet_info_bits.getBytes(), encryptionKey);
-							System.out.println("after " + Arrays.toString(EN_buf));
-							System.out.println("image_length " + packet_info_bits);
-							System.out.println("EN_buf " + EN_buf);
+							// System.out.println("after " + Arrays.toString(EN_buf));
+							// System.out.println("image_length " + packet_info_bits);
+							// System.out.println("EN_buf " + EN_buf);
 							senddp_info = new DatagramPacket(EN_buf, EN_buf.length, ClientIPAddr, 20000);
 
 							RTPsocket_info.send(senddp_info);
-							System.out.println("num: " + new String(EN_buf));
+							System.out.println("sent info bytes: " + new String(EN_buf));
 						} else {
 							String packet_info_bits = String.valueOf(image_length);
-							System.out.println("image_length" + packet_info_bits);
+							// System.out.println("image_length" + packet_info_bits);
 							senddp_info = new DatagramPacket(packet_info_bits.getBytes(), packet_info_bits.length(), ClientIPAddr, 20000);
 
 							RTPsocket_info.send(senddp_info);
-							System.out.println("num: " + packet_info_bits);
+							System.out.println("sent info bytes: " + packet_info_bits);
 						}
 					} catch (Exception ex) {
 						System.out.println("Exception caught: " + ex);
@@ -463,7 +468,7 @@ public class Server extends JFrame {
         byte[] returnText = new byte[clearText.length];
 		String IV = "AAAAAAAAAAAAAAAA";
         int length=B_shared_key.length();
-		System.out.println("B shared Key length : " + length);
+		// System.out.println("B shared Key length : " + length);
         if(length>16 && length!=16){
             B_shared_key=B_shared_key.substring(0, 16);
         }

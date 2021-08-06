@@ -426,12 +426,15 @@ public class Client {
 				if (EN_STATE == DHON && imagenb < encryption_threshold) {
 					imagenb++;
 					String info;
-					System.out.println("before " + Arrays.toString(rcvdp_info.getData()));
-					System.out.println("before " + rcvdp_info.getLength());
+					// System.out.println("before " + Arrays.toString(rcvdp_info.getData()));
+					// System.out.println("before " + rcvdp_info.getLength());
+
+					// get video length info
 					receivedInfoDecrypted = aes_decrypt(rcvdp_info.getData(), encryptionKey);
 					info = new String(receivedInfoDecrypted);
 					info = info.replace(info.substring(info.length() - 1), "");
-					System.out.println("after " + info);
+					// System.out.println("after " + info);
+
 					// load received video frame data
 					rtp_packet = new RTPpacket(rcvdp.getData(), rcvdp.getLength());
 					try {
@@ -439,10 +442,11 @@ public class Client {
 					} catch (Exception exc) {
 						payload_length = 6000;
 					}
-					System.out.println("l: " + rtp_packet.getpayload_length());
+					// System.out.println("l: " + rtp_packet.getpayload_length());
 					payload = new byte[rtp_packet.getpayload_length()];
 					rtp_packet.getpayload(payload);
 
+					// add padding before decrypting (Padding required by AES decryptor if data length less than multiply of 16)
 					byte[] padded = new byte[15008];
 					int num_pad = padded.length - payload.length;
 					byte pad = (byte) num_pad;
@@ -450,11 +454,13 @@ public class Client {
 					for (int s=0; s<payload.length; s++){
 						padded[s] = payload[s];
 					}
-					System.out.println("padded: " + padded.length);
+					// System.out.println("padded: " + padded.length);
+
 					// decrypt video frame data
 					receivedDataDecrypted = aes_decrypt(padded, encryptionKey);
 					// reassign payload
 					payload = receivedDataDecrypted;
+					System.out.println("received packet bytes: " + payload + " (encrypted)");
 				} else {
 					// create an RTPpacket object from the DP
 					receivedDataDecrypted = rcvdp.getData();
@@ -472,10 +478,11 @@ public class Client {
 					payload_length = rtp_packet.getpayload_length();
 					payload = new byte[payload_length];
 					rtp_packet.getpayload(payload);
+					System.out.println("received packet bytes: " + payload + " (non-encrypted)");
 				}
 
 				// System.out.println("payload: " + payload);
-				System.out.println("payload length: " + payload_length);
+				System.out.println("received packet length: " + payload_length);
 
 
 				// get an Image object from the payload bitstream
@@ -487,7 +494,7 @@ public class Client {
 				icon = new ImageIcon(image);
 				iconLabel.setIcon(icon);
 			} catch (InterruptedIOException iioe) {
-				System.out.println("Nothing to read");
+				// System.out.println("Nothing to read");
 			} catch (IOException ioe) {
 				System.out.println("Exception caught: " + ioe);
 			} catch (Throwable t) {
@@ -520,7 +527,8 @@ public class Client {
 				String SessionLine = RTSPBufferedReader.readLine();
 				System.out.println("SessionLine: " + SessionLine);
 
-				if (state == INIT && EN_STATE != DHON) {
+				// get video frame length from server response
+				if (state == INIT && EN_STATE != DHON) { 
 					String FrameLengthLine = RTSPBufferedReader.readLine();
 					System.out.println("FrameLengthLine: " + FrameLengthLine);
 					tokens = new StringTokenizer(FrameLengthLine);
@@ -579,12 +587,14 @@ public class Client {
 		}
 	}
 
+	// # AES-Rijndael ENCRYPTION
 	public  byte[] aes_decrypt(byte[] ciphertext, String B_shared_key) throws  NoSuchAlgorithmException, InvalidKeyException, Throwable {
         byte[] clearText;
         byte[] cipherText = new byte[ciphertext.length];
 		String IV = "AAAAAAAAAAAAAAAA";
 
         int length=B_shared_key.length();
+		// check key length
         if(length>16 && length!=16){
             B_shared_key=B_shared_key.substring(0, 16);
         }
