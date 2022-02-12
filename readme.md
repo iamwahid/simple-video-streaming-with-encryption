@@ -35,6 +35,10 @@ $ java -jar Server.jar [PORT] [EncryptionCode]
 $ java -jar Client.jar [HOST|localhost] [PORT] [EncryptionCode]
 ```
 
+### Screenshots
+<img width="1416" alt="image" src="https://user-images.githubusercontent.com/44934156/153706935-e1c06369-2f51-4461-b1d3-b4fa781ffe32.png">
+
+
 ### Questions
 1. Tentang info yg tampil di command line, apakah itu dlam byte biasa, array byte, bit, ascii.
 > A: info yang ditampilkan merupakan cuplikan bytes dari frame yang akan di transfer. beserta dengan panjang bytenya per frame. adapun format data yang ditampilkan, itu otomatis menggunakan pengkodean ASCII, makanya ada beberapa symbol yang aneh �. gunanya adalah untuk debugging/membandingkan antara data yg dikirim Server dan yg diterima Client
