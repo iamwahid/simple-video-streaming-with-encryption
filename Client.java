@@ -161,6 +161,9 @@ public class Client {
 	// ------------------
 	static int MJPEG_TYPE = 26; // RTP payload type for MJPEG video
 
+	int imagenb = 1;
+	static int show_md5_until = -1;
+
 	// --------------------------
 	// Constructor
 	// --------------------------
@@ -226,8 +229,11 @@ public class Client {
 		int RTSP_server_port = Integer.parseInt(argv[1]);
 		InetAddress ServerIPAddr = InetAddress.getByName(ServerHost);
 
-		if (argv[2] != null) 
+		if (argv.length >= 3) 
 			encryptionKey = String.valueOf(argv[2]);
+		
+		if (argv.length >= 4) 
+			show_md5_until = Integer.parseInt(argv[3]);
 
 		// get video filename to request:
 		VideoFileName = "movie.Mjpeg";
@@ -421,9 +427,16 @@ public class Client {
 
 				if (EN_STATE == DHON) {
 					String info;
+					System.out.println("-------------------------------------------------------");
+					System.out.println("-------------------[ FRAME " + imagenb + " ]-------------------------");
+					System.out.println("-------------------------------------------------------");
+					
 					System.out.println("before " + Arrays.toString(rcvdp_info.getData()));
 					// System.out.println("before " + rcvdp_info.getLength());
 					receivedInfoDecrypted = aes_decrypt(rcvdp_info.getData(), encryptionKey);
+					if (imagenb > 0 && imagenb <= show_md5_until) {
+						System.out.println("MD5 : " + MD5Hash.getMd5( receivedInfoDecrypted ));
+					}
 					System.out.println("after " + Arrays.toString(receivedInfoDecrypted));
 					info = new String(receivedInfoDecrypted);
 					info = info.replace(info.substring(info.length() - 1), "");
@@ -452,6 +465,7 @@ public class Client {
 					// reassign payload
 					payload = receivedDataDecrypted;
 					System.out.println("received packet bytes: " + payload);
+					imagenb++;
 				} else {
 					// create an RTPpacket object from the DP
 					receivedDataDecrypted = rcvdp.getData();

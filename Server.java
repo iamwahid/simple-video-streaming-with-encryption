@@ -135,6 +135,8 @@ public class Server extends JFrame {
 	final static String CRLF = "\r\n";
 
 	int image_length;
+
+	static int show_md5_until = -1;
 	// --------------------------------
 	// Constructor
 	// --------------------------------
@@ -161,6 +163,9 @@ public class Server extends JFrame {
 						if(EN_STATE == DHON) {
 							EN_buf = aes_encrypt(buf, encryptionKey);
 							rtp_packet = new RTPpacket(MJPEG_TYPE, imagenb, imagenb * FRAME_PERIOD, EN_buf, EN_buf.length);
+							System.out.println("-------------------------------------------------------");
+							System.out.println("-------------------[ FRAME " + imagenb + " ]-------------------------");
+							System.out.println("-------------------------------------------------------");
 							System.out.println("sent packet bytes: " + EN_buf);
 							System.out.println("sent packet bytes length: " + rtp_packet.getlength());
 						} else {
@@ -218,6 +223,9 @@ public class Server extends JFrame {
 							// System.out.println("before " + packet_info_bits);
 							byte[] EN_buf = new byte[packet_info_bits.length()];
 							System.out.println("before " + Arrays.toString(packet_info_bits.getBytes()));
+							if (imagenb > 0 && imagenb <= show_md5_until) {
+								System.out.println("MD5 : " + MD5Hash.getMd5(packet_info_bits.getBytes()));
+							}
 							EN_buf = aes_encrypt(packet_info_bits.getBytes(), encryptionKey);
 							System.out.println("after " + Arrays.toString(EN_buf));
 							System.out.println("image_length " + image_length);
@@ -288,8 +296,11 @@ public class Server extends JFrame {
 
 		// get RTSP socket port from the command line
 		int RTSPport = Integer.parseInt(argv[0]);
-		if (argv[1] != null) 
+		if (argv.length >= 2) 
 			encryptionKey = String.valueOf(argv[1]);
+		
+		if (argv.length >= 3) 
+			show_md5_until = Integer.parseInt(argv[2]);
 
 		try {
 			// Initiate TCP connection with the client for the RTSP session
