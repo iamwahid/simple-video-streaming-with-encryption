@@ -162,7 +162,7 @@ public class Client {
 	static int MJPEG_TYPE = 26; // RTP payload type for MJPEG video
 
 	int imagenb = 1;
-	static int show_md5_until = -1;
+	static int show_hash_until = -1;
 
 	// --------------------------
 	// Constructor
@@ -233,7 +233,7 @@ public class Client {
 			encryptionKey = String.valueOf(argv[2]);
 		
 		if (argv.length >= 4) 
-			show_md5_until = Integer.parseInt(argv[3]);
+			show_hash_until = Integer.parseInt(argv[3]);
 
 		// get video filename to request:
 		VideoFileName = "movie.Mjpeg";
@@ -434,8 +434,8 @@ public class Client {
 					System.out.println("before " + Arrays.toString(rcvdp_info.getData()));
 					// System.out.println("before " + rcvdp_info.getLength());
 					receivedInfoDecrypted = aes_decrypt(rcvdp_info.getData(), encryptionKey);
-					if (imagenb > 0 && imagenb <= show_md5_until) {
-						System.out.println("MD5 : " + MD5Hash.getMd5( receivedInfoDecrypted ));
+					if (imagenb > 0 && imagenb <= show_hash_until) {
+						System.out.println("Hash (SHA-256) : " + MyHash.getSHA256( receivedInfoDecrypted ));
 					}
 					System.out.println("after " + Arrays.toString(receivedInfoDecrypted));
 					info = new String(receivedInfoDecrypted);

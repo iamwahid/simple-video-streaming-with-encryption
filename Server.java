@@ -136,7 +136,7 @@ public class Server extends JFrame {
 
 	int image_length;
 
-	static int show_md5_until = -1;
+	static int show_hash_until = -1;
 	// --------------------------------
 	// Constructor
 	// --------------------------------
@@ -223,8 +223,8 @@ public class Server extends JFrame {
 							// System.out.println("before " + packet_info_bits);
 							byte[] EN_buf = new byte[packet_info_bits.length()];
 							System.out.println("before " + Arrays.toString(packet_info_bits.getBytes()));
-							if (imagenb > 0 && imagenb <= show_md5_until) {
-								System.out.println("MD5 : " + MD5Hash.getMd5(packet_info_bits.getBytes()));
+							if (imagenb > 0 && imagenb <= show_hash_until) {
+								System.out.println("Hash (SHA-256) : " + MyHash.getSHA256(packet_info_bits.getBytes()));
 							}
 							EN_buf = aes_encrypt(packet_info_bits.getBytes(), encryptionKey);
 							System.out.println("after " + Arrays.toString(EN_buf));
@@ -300,7 +300,7 @@ public class Server extends JFrame {
 			encryptionKey = String.valueOf(argv[1]);
 		
 		if (argv.length >= 3) 
-			show_md5_until = Integer.parseInt(argv[2]);
+			show_hash_until = Integer.parseInt(argv[2]);
 
 		try {
 			// Initiate TCP connection with the client for the RTSP session
