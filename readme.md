@@ -7,7 +7,7 @@
 
 ### Compile
 ```
-$ javac Server.java Client.java
+$ javac Server.java Client.java ClientPublic.java
 
 ```
 
@@ -19,6 +19,11 @@ $ java Server [PORT] [EncryptionCode] [MD5 log count]
 ### Run Client
 ```
 $ java Client [HOST|localhost] [PORT] [EncryptionCode] [MD5 log count]
+```
+
+### Run ClientPublic
+```
+$ java Client [HOST|localhost] [PORT]
 ```
 
 ## Run from Release Files
