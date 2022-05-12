@@ -86,6 +86,7 @@ public class Server extends JFrame {
 								// packets
 	DatagramSocket RTPsocket_info; // socket to be used to send and receive UDP
 								// packets
+    private  DatagramPacket rcvdp_info; //UDP packet received from the server
 
 	DatagramPacket senddp; // UDP packet containing the video frames
 	DatagramPacket senddp_info; // UDP packet containing the video frames
@@ -210,6 +211,8 @@ public class Server extends JFrame {
             public void actionPerformed(ActionEvent evt) {
                 if (imagenb < VIDEO_LENGTH) {
 					// update current imagenb
+					byte[] Loss = new byte[8];
+					rcvdp_info = new DatagramPacket(Loss, Loss.length);
 
 					try {
 						
@@ -242,6 +245,22 @@ public class Server extends JFrame {
 							RTPsocket_info.send(senddp_info);
 							System.out.println("sent info bytes: " + packet_info_bits);
 						}
+						RTPsocket_info.receive(rcvdp_info);
+						RTPpacket rtp_packet = new RTPpacket(rcvdp_info.getData(), rcvdp_info.getLength());
+
+						// get the payload bitstream from the RTPpacket object
+						int payload_length = rtp_packet.getpayload_length();
+						int loss = 0;
+						byte[] payload = new byte[payload_length];
+						rtp_packet.getpayload(payload);
+						String info = new String(payload);
+						try {
+							loss = Integer.parseInt(info);
+						} catch (Exception exc) {
+							loss = 1;
+						}
+						System.out.println("sent loss info: " + loss);
+
 					} catch (Exception ex) {
 						System.out.println("Exception caught: " + ex);
 						ex.printStackTrace();
