@@ -519,13 +519,13 @@ public class ClientPublic {
 				LossData = 1;
 			}
 			
-			try {
-				String packet_loss_bits = String.valueOf(LossData);
-				packet_loss = new DatagramPacket(packet_loss_bits.getBytes(), packet_loss_bits.length(), ServerIPAddr, 23000);
-				RTPsocket_info.send(packet_loss);
-			} catch (Throwable t) {
-				t.printStackTrace();
-			}
+			// try {
+			// 	String packet_loss_bits = String.valueOf(LossData);
+			// 	packet_loss = new DatagramPacket(packet_loss_bits.getBytes(), packet_loss_bits.length(), ServerIPAddr, 23000);
+			// 	RTPsocket_info.send(packet_loss);
+			// } catch (Throwable t) {
+			// 	t.printStackTrace();
+			// }
 		}
 	}
 

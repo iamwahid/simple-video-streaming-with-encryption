@@ -245,21 +245,22 @@ public class Server extends JFrame {
 							RTPsocket_info.send(senddp_info);
 							System.out.println("sent info bytes: " + packet_info_bits);
 						}
-						RTPsocket_info.receive(rcvdp_info);
-						RTPpacket rtp_packet = new RTPpacket(rcvdp_info.getData(), rcvdp_info.getLength());
+						// RTPsocket_info.receive(rcvdp_info);
+						// RTPpacket rtp_packet = new RTPpacket(rcvdp_info.getData(), rcvdp_info.getLength());
 
-						// get the payload bitstream from the RTPpacket object
-						int payload_length = rtp_packet.getpayload_length();
-						int loss = 0;
-						byte[] payload = new byte[payload_length];
-						rtp_packet.getpayload(payload);
-						String info = new String(payload);
-						try {
-							loss = Integer.parseInt(info);
-						} catch (Exception exc) {
-							loss = 1;
-						}
-						System.out.println("sent loss info: " + loss);
+						// // get the payload bitstream from the RTPpacket object
+						// int payload_length = rtp_packet.getpayload_length();
+						// int loss = 0;
+						// byte[] payload = new byte[payload_length];
+						// rtp_packet.getpayload(payload);
+						// String info = new String(payload);
+						// try {
+						// 	loss = Integer.parseInt(info);
+						// 	System.out.println("sent info bytes: " + loss);
+						// } catch (Exception exc) {
+						// 	loss = 1;
+						// }
+						// System.out.println("sent loss info: " + loss);
 
 					} catch (Exception ex) {
 						System.out.println("Exception caught: " + ex);

@@ -84,7 +84,7 @@ public class Client {
 	//RTP variables:
     //----------------
 
-    private  DatagramPacket rcvdp,senddp,rcvdp_info; //UDP packet received from the server
+    private  DatagramPacket rcvdp,senddp,rcvdp_info,packet_loss; //UDP packet received from the server
     DatagramSocket RTPsocket,RTPsocket_time; //socket to be used to send and receive UDP packets
     DatagramSocket RTPsocket_info; //socket to be used to send and receive UDP packets
     final static int RTP_RCV_PORT = 25000; //port where the client will receive the RTP packets
@@ -126,6 +126,7 @@ public class Client {
     final static int TEARDOWN = 6;
 
     private  String ServerHost;
+	private static InetAddress ServerIPAddr;
     private int RTSP_server_port,reply_code;
     private Thread  timerplayThread;
     private int RTSPid = 999; //ID of the RTSP session (given by the RTSP Server)
@@ -163,6 +164,7 @@ public class Client {
 
 	int imagenb = 1;
 	static int show_hash_until = -1;
+	int LossData;
 
 	// --------------------------
 	// Constructor
@@ -227,7 +229,7 @@ public class Client {
 		// ------------------
 		String ServerHost = argv[0];
 		int RTSP_server_port = Integer.parseInt(argv[1]);
-		InetAddress ServerIPAddr = InetAddress.getByName(ServerHost);
+		ServerIPAddr = InetAddress.getByName(ServerHost);
 
 		if (argv.length >= 3) 
 			encryptionKey = String.valueOf(argv[2]);
@@ -497,13 +499,25 @@ public class Client {
 				// display the image as an ImageIcon object
 				icon = new ImageIcon(image);
 				iconLabel.setIcon(icon);
+				LossData = 0;
 			} catch (InterruptedIOException iioe) {
 				// System.out.println("Nothing to read");
+				LossData = 1;
 			} catch (IOException ioe) {
 				System.out.println("Exception caught: " + ioe);
+				LossData = 1;
 			} catch (Throwable t) {
 				t.printStackTrace();
+				LossData = 1;
 			}
+
+			// try {
+			// 	String packet_loss_bits = String.valueOf(LossData);
+			// 	packet_loss = new DatagramPacket(packet_loss_bits.getBytes(), packet_loss_bits.length(), ServerIPAddr, 23000);
+			// 	RTPsocket_info.send(packet_loss);
+			// } catch (Throwable t) {
+			// 	t.printStackTrace();
+			// }
 		}
 	}
 
