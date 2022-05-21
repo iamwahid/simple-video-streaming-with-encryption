@@ -85,11 +85,12 @@ public class Server extends JFrame {
 	DatagramSocket RTPsocket; // socket to be used to send and receive UDP
 								// packets
 	DatagramSocket RTPsocket_info; // socket to be used to send and receive UDP
+	DatagramSocket RTPsocket_hash; // socket to be used to send and receive UDP
 								// packets
     private  DatagramPacket rcvdp_info; //UDP packet received from the server
 
 	DatagramPacket senddp; // UDP packet containing the video frames
-	DatagramPacket senddp_info; // UDP packet containing the video frames
+	DatagramPacket senddp_info, senddp_hash; // UDP packet containing the video frames
 
 	InetAddress ClientIPAddr; // Client IP address
 
@@ -223,44 +224,34 @@ public class Server extends JFrame {
 							for (int s=packet_info_bits.length(); s<16; s++){
 								packet_info_bits += num_pad;
 							}
+							String hash = MyHash.getSHA256(packet_info_bits.getBytes());
 							// System.out.println("before " + packet_info_bits);
 							byte[] EN_buf = new byte[packet_info_bits.length()];
 							System.out.println("before " + Arrays.toString(packet_info_bits.getBytes()));
-							if (imagenb > 0 && imagenb <= show_hash_until) {
-								System.out.println("Hash (SHA-256) : " + MyHash.getSHA256(packet_info_bits.getBytes()));
-							}
+							// if (imagenb > 0 && imagenb <= show_hash_until) {
+							// 	System.out.println("Hash (SHA-256) : " + hash);
+							// }
 							EN_buf = aes_encrypt(packet_info_bits.getBytes(), encryptionKey);
 							System.out.println("after " + Arrays.toString(EN_buf));
 							System.out.println("image_length " + image_length);
 							// System.out.println("EN_buf " + EN_buf);
 							senddp_info = new DatagramPacket(EN_buf, EN_buf.length, ClientIPAddr, 20000);
+							senddp_hash = new DatagramPacket(hash.getBytes(), hash.length(), ClientIPAddr, 20111);
 
 							RTPsocket_info.send(senddp_info);
+							RTPsocket_hash.send(senddp_hash);
 							System.out.println("sent info bytes: " + new String(EN_buf));
 						} else {
 							String packet_info_bits = String.valueOf(image_length);
+							String hash = MyHash.getSHA256(packet_info_bits.getBytes());
 							System.out.println("image_length" + packet_info_bits);
 							senddp_info = new DatagramPacket(packet_info_bits.getBytes(), packet_info_bits.length(), ClientIPAddr, 20000);
+							senddp_hash = new DatagramPacket(hash.getBytes(), hash.length(), ClientIPAddr, 20111);
 
 							RTPsocket_info.send(senddp_info);
+							RTPsocket_hash.send(senddp_hash);
 							System.out.println("sent info bytes: " + packet_info_bits);
 						}
-						// RTPsocket_info.receive(rcvdp_info);
-						// RTPpacket rtp_packet = new RTPpacket(rcvdp_info.getData(), rcvdp_info.getLength());
-
-						// // get the payload bitstream from the RTPpacket object
-						// int payload_length = rtp_packet.getpayload_length();
-						// int loss = 0;
-						// byte[] payload = new byte[payload_length];
-						// rtp_packet.getpayload(payload);
-						// String info = new String(payload);
-						// try {
-						// 	loss = Integer.parseInt(info);
-						// 	System.out.println("sent info bytes: " + loss);
-						// } catch (Exception exc) {
-						// 	loss = 1;
-						// }
-						// System.out.println("sent loss info: " + loss);
 
 					} catch (Exception ex) {
 						System.out.println("Exception caught: " + ex);
@@ -364,6 +355,7 @@ public class Server extends JFrame {
 					// init RTP socket
 					theServer.RTPsocket = new DatagramSocket();
 					theServer.RTPsocket_info = new DatagramSocket(23000);
+					theServer.RTPsocket_hash = new DatagramSocket(24111);
 				}
 			}
 
@@ -400,6 +392,7 @@ public class Server extends JFrame {
 					theServer.RTSPsocket.close();
 					theServer.RTPsocket.close();
 					theServer.RTPsocket_info.close();
+					theServer.RTPsocket_hash.close();
 
 					System.exit(0);
 				}

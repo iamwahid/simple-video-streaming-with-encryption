@@ -438,9 +438,9 @@ public class ClientPublic {
 					System.out.println("before " + Arrays.toString(rcvdp_info.getData()));
 					// System.out.println("before " + rcvdp_info.getLength());
 					receivedInfoDecrypted = aes_decrypt(rcvdp_info.getData(), encryptionKey);
-					if (imagenb > 0 && imagenb <= show_hash_until) {
-						System.out.println("Hash (SHA-256) : " + MyHash.getSHA256( receivedInfoDecrypted ));
-					}
+					// if (imagenb > 0 && imagenb <= show_hash_until) {
+					// 	System.out.println("Hash (SHA-256) : " + MyHash.getSHA256( receivedInfoDecrypted ));
+					// }
 					System.out.println("after " + Arrays.toString(receivedInfoDecrypted));
 					info = new String(receivedInfoDecrypted);
 					info = info.replace(info.substring(info.length() - 1), "");

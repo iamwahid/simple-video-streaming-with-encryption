@@ -84,11 +84,13 @@ public class Client {
 	//RTP variables:
     //----------------
 
-    private  DatagramPacket rcvdp,senddp,rcvdp_info,packet_loss; //UDP packet received from the server
+    private  DatagramPacket rcvdp,senddp,rcvdp_info,rcvdp_hash,packet_loss; //UDP packet received from the server
     DatagramSocket RTPsocket,RTPsocket_time; //socket to be used to send and receive UDP packets
     DatagramSocket RTPsocket_info; //socket to be used to send and receive UDP packets
+    DatagramSocket RTPsocket_hash; //socket to be used to send and receive UDP packets
     final static int RTP_RCV_PORT = 25000; //port where the client will receive the RTP packets
     final static int RTP_RCV_PORT_INFO = 20000; //port where the client will receive the RTP packets
+    final static int RTP_RCV_PORT_HASH = 20111; //port where the client will receive the RTP packets
     private DatagramChannel channel;
     int messagenb=0;
     Timer timer; //timer used to receive data from the UDP socket
@@ -164,7 +166,7 @@ public class Client {
 
 	int imagenb = 1;
 	static int show_hash_until = -1;
-	int LossData;
+	int LossCount = 0;
 
 	// --------------------------
 	// Constructor
@@ -289,6 +291,10 @@ public class Client {
 					// set TimeOut value of the socket to 5msec.
 					RTPsocket_info.setSoTimeout(5);
 
+					RTPsocket_hash = new DatagramSocket(RTP_RCV_PORT_HASH);
+					// set TimeOut value of the socket to 5msec.
+					RTPsocket_hash.setSoTimeout(5);
+
 				} catch (SocketException se) {
 					System.out.println("Socket exception: " + se);
 					System.exit(0);
@@ -411,7 +417,9 @@ public class Client {
 
 			// Construct a DatagramPacket to receive data from the UDP socket
 			byte[] ReceiveData = new byte[16];
+			byte[] hashData = new byte[64];
 			rcvdp_info = new DatagramPacket(ReceiveData, ReceiveData.length);
+			rcvdp_hash = new DatagramPacket(hashData, hashData.length);
 			rcvdp = new DatagramPacket(buf, buf.length);
 			int i,j;
 			byte[] receivedDataDecrypted = new byte[15008];
@@ -420,6 +428,7 @@ public class Client {
 			try {
 				// receive the DP from the socket:
 				RTPsocket_info.receive(rcvdp_info);
+				RTPsocket_hash.receive(rcvdp_hash);
 
 				RTPsocket.receive(rcvdp);
 				RTPpacket rtp_packet;
@@ -432,12 +441,21 @@ public class Client {
 					System.out.println("-------------------------------------------------------");
 					System.out.println("-------------------[ FRAME " + imagenb + " ]-------------------------");
 					System.out.println("-------------------------------------------------------");
-					
+
+					String r_hash = new String(rcvdp_hash.getData());
 					System.out.println("before " + Arrays.toString(rcvdp_info.getData()));
 					// System.out.println("before " + rcvdp_info.getLength());
 					receivedInfoDecrypted = aes_decrypt(rcvdp_info.getData(), encryptionKey);
-					if (imagenb > 0 && imagenb <= show_hash_until) {
-						System.out.println("Hash (SHA-256) : " + MyHash.getSHA256( receivedInfoDecrypted ));
+					String hash = MyHash.getSHA256( receivedInfoDecrypted );
+					// if (imagenb > 0 && imagenb <= show_hash_until) {
+					// 	System.out.println("Hash (SHA-256) : " + hash);
+					// }
+
+					if (r_hash.equalsIgnoreCase(hash)) {
+						System.out.println("Packet Loss = 0");
+					} else {
+						LossCount++;
+						System.out.println("Packet Loss = 1");
 					}
 					System.out.println("after " + Arrays.toString(receivedInfoDecrypted));
 					info = new String(receivedInfoDecrypted);
@@ -489,6 +507,7 @@ public class Client {
 
 				// System.out.println("payload: " + payload);
 				System.out.println("received packet length: " + payload_length);
+				System.out.println("Packet Loss Total = " + LossCount + "/" + imagenb);
 
 
 				// get an Image object from the payload bitstream
@@ -499,25 +518,13 @@ public class Client {
 				// display the image as an ImageIcon object
 				icon = new ImageIcon(image);
 				iconLabel.setIcon(icon);
-				LossData = 0;
 			} catch (InterruptedIOException iioe) {
 				// System.out.println("Nothing to read");
-				LossData = 1;
 			} catch (IOException ioe) {
 				System.out.println("Exception caught: " + ioe);
-				LossData = 1;
 			} catch (Throwable t) {
 				t.printStackTrace();
-				LossData = 1;
 			}
-
-			// try {
-			// 	String packet_loss_bits = String.valueOf(LossData);
-			// 	packet_loss = new DatagramPacket(packet_loss_bits.getBytes(), packet_loss_bits.length(), ServerIPAddr, 23000);
-			// 	RTPsocket_info.send(packet_loss);
-			// } catch (Throwable t) {
-			// 	t.printStackTrace();
-			// }
 		}
 	}
 
