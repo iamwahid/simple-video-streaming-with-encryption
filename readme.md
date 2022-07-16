@@ -18,7 +18,7 @@ $ java Server [PORT] [EncryptionCode] [MD5 log count]
 
 ### Run Client
 ```
-$ java Client [HOST|localhost] [PORT] [EncryptionCode] [MD5 log count]
+$ java Client
 ```
 
 ### Run ClientPublic
