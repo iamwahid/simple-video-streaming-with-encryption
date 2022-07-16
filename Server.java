@@ -196,7 +196,7 @@ public class Server extends JFrame {
 						// update GUI
 						label.setText("Send frame #" + imagenb);
 					} catch (Exception ex) {
-						System.out.println("Exception caught: " + ex);
+						System.out.println("Exception caught: 1 " + ex);
 						System.exit(0);
 					} catch (Throwable t) {
 						t.printStackTrace();
@@ -254,7 +254,7 @@ public class Server extends JFrame {
 						}
 
 					} catch (Exception ex) {
-						System.out.println("Exception caught: " + ex);
+						System.out.println("Exception caught: 2 " + ex);
 						ex.printStackTrace();
 						System.exit(0);
 					} catch (Throwable t) {
@@ -270,11 +270,11 @@ public class Server extends JFrame {
 		// init Timer
 		timer = new Timer(FRAME_PERIOD, videoStreamer);
 		timer.setInitialDelay(0);
-		timer.setCoalesce(true);
+		timer.setCoalesce(false);
 
 		timer1 = new Timer(FRAME_PERIOD, infoListener);
 		timer1.setInitialDelay(0);
-		timer1.setCoalesce(true);
+		timer1.setCoalesce(false);
 
 		// allocate memory for the sending buffer
 		buf = new byte[15008];
@@ -456,7 +456,7 @@ public class Server extends JFrame {
 			// else LastLine will be the SessionId line ... do not check for
 			// now.
 		} catch (Exception ex) {
-			System.out.println("Exception caught: " + ex);
+			System.out.println("Exception caught: 3 " + ex);
 			System.exit(0);
 		}
 		return (request_type);
@@ -473,7 +473,7 @@ public class Server extends JFrame {
 			RTSPBufferedWriter.flush();
 			// System.out.println("RTSP Server - Sent response to Client.");
 		} catch (Exception ex) {
-			System.out.println("Exception caught: " + ex);
+			System.out.println("Exception caught: 4 " + ex);
 			System.exit(0);
 		}
 	}

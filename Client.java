@@ -127,9 +127,9 @@ public class Client {
     final static int PAUSE = 5;
     final static int TEARDOWN = 6;
 
-    private  String ServerHost;
+    private static String ServerHost;
 	private static InetAddress ServerIPAddr;
-    private int RTSP_server_port,reply_code;
+    private static int RTSP_server_port,reply_code;
     private Thread  timerplayThread;
     private int RTSPid = 999; //ID of the RTSP session (given by the RTSP Server)
 
@@ -142,7 +142,7 @@ public class Client {
 
 	// GUI
 	// ----
-	JFrame f = new JFrame("Client");
+	static JFrame f = new JFrame("Client");
 
 	JButton setupButton = new JButton("Setup");
 
@@ -152,6 +152,8 @@ public class Client {
 
 	JButton tearButton = new JButton("Teardown");
 
+	JButton settingButton = new JButton("Setting");
+
 	JPanel mainPanel = new JPanel();
 
 	JPanel buttonPanel = new JPanel();
@@ -159,6 +161,31 @@ public class Client {
 	JLabel iconLabel = new JLabel();
 
 	ImageIcon icon;
+
+	static JFrame fs = new JFrame("ClientSetting");
+
+	JPanel settingPanel = new JPanel();
+	JPanel sButtonPanel = new JPanel();
+	JPanel inputPanel = new JPanel();
+	JPanel hostPanel = new JPanel();
+	JPanel portPanel = new JPanel();
+	JPanel codePanel = new JPanel();
+	JPanel framePanel = new JPanel();
+
+	JTextField i_host = new JTextField(10);
+	JTextField i_port = new JTextField(10);
+	JTextField i_code = new JTextField(10);
+	JTextField i_frame = new JTextField(10);
+
+	JLabel l_host = new JLabel("Host");
+	JLabel l_port = new JLabel("Port");
+	JLabel l_code = new JLabel("Code");
+	JLabel l_frame = new JLabel("Frame");
+
+	JButton saveButton = new JButton("Save");
+
+	JButton cancelButton = new JButton("Cancel");
+
 
 	// Video constants:
 	// ------------------
@@ -189,10 +216,12 @@ public class Client {
 		buttonPanel.add(playButton);
 		buttonPanel.add(pauseButton);
 		buttonPanel.add(tearButton);
+		buttonPanel.add(settingButton);
 		setupButton.addActionListener(new setupButtonListener());
 		playButton.addActionListener(new playButtonListener());
 		pauseButton.addActionListener(new pauseButtonListener());
 		tearButton.addActionListener(new tearButtonListener());
+		settingButton.addActionListener(new openSettingButtonListener());
 
 		// Image display label
 		iconLabel.setIcon(null);
@@ -208,6 +237,53 @@ public class Client {
 		f.setSize(new Dimension(390, 370));
 		f.setVisible(true);
 
+		fs.addWindowListener(new WindowAdapter() {
+			public void windowClosing(WindowEvent e) {
+				System.out.println("Setting closed");
+				f.setVisible(true);
+			}
+		});
+
+		inputPanel.setLayout(new GridLayout(0, 1));
+
+		hostPanel.setLayout(new GridLayout(1, 0));
+		hostPanel.add(l_host);
+		i_host.setText("localhost");
+		hostPanel.add(i_host);
+		inputPanel.add(hostPanel);
+
+		portPanel.setLayout(new GridLayout(1, 0));
+		portPanel.add(l_port);
+		i_port.setText("1888");
+		portPanel.add(i_port);
+		inputPanel.add(portPanel);
+
+		codePanel.setLayout(new GridLayout(1, 0));
+		codePanel.add(l_code);
+		codePanel.add(i_code);
+		i_code.setText("");
+		inputPanel.add(codePanel);
+
+		framePanel.setLayout(new GridLayout(1, 0));
+		framePanel.add(l_frame);
+		framePanel.add(i_frame);
+		inputPanel.add(framePanel);
+
+		sButtonPanel.setLayout(new GridLayout(1, 0));
+		sButtonPanel.add(saveButton);
+		sButtonPanel.add(cancelButton);
+		saveButton.addActionListener(new saveSettingButtonListener());
+		cancelButton.addActionListener(new cancelSettingButtonListener());
+
+		settingPanel.add(inputPanel);
+		inputPanel.setBounds(0, 280, 380, 50);
+		settingPanel.add(sButtonPanel);
+		sButtonPanel.setBounds(0, 280, 380, 50);
+
+		fs.getContentPane().add(settingPanel, BorderLayout.CENTER);
+		fs.setSize(new Dimension(390, 370));
+
+
 		// init timer
 		// --------------------------
 		timer = new Timer(20, new timerListener());
@@ -220,28 +296,12 @@ public class Client {
 		buf1 = new byte[8];
 	}
 
-	// ------------------------------------
-	// main
-	// ------------------------------------
-	public static void main(String argv[]) throws Exception {
+	private static void setupConnection() throws Exception {
 		// Create a Client object
 		Client theClient = new Client();
 
-		// get server RTSP port and IP address from the command line
-		// ------------------
-		String ServerHost = argv[0];
-		int RTSP_server_port = Integer.parseInt(argv[1]);
-		ServerIPAddr = InetAddress.getByName(ServerHost);
-
-		if (argv.length >= 3) 
-			encryptionKey = String.valueOf(argv[2]);
-		
-		if (argv.length >= 4) 
-			show_hash_until = Integer.parseInt(argv[3]);
-
 		// get video filename to request:
 		VideoFileName = "movie.Mjpeg";
-		
 
 		// Establish a TCP connection with the server to exchange RTSP messages
 		// ------------------
@@ -264,12 +324,84 @@ public class Client {
 	}
 
 	// ------------------------------------
+	// main
+	// ------------------------------------
+	public static void main(String argv[]) throws Exception {
+
+		// get server RTSP port and IP address from the command line
+		// ------------------
+		// String ServerHost = argv[0];
+		// RTSP_server_port = Integer.parseInt(argv[1]);
+		// ServerIPAddr = InetAddress.getByName(ServerHost);
+
+		// if (argv.length >= 3) 
+		// 	encryptionKey = String.valueOf(argv[2]);
+		
+		// if (argv.length >= 4) 
+		// 	show_hash_until = Integer.parseInt(argv[3]);
+
+		setupConnection();
+	}
+
+	// ------------------------------------
 	// Handler for buttons
 	// ------------------------------------
 
 	// .............
 	// TO COMPLETE
 	// .............
+
+	// ------------------------------------
+	// Handler for Setting
+	// ------------------------------------
+	class openSettingButtonListener implements ActionListener {
+		public void actionPerformed(ActionEvent e) {
+
+			// System.out.println("Setup Button pressed !");
+			f.setVisible(false);
+			fs.setVisible(true);
+		}
+	}
+
+	class saveSettingButtonListener implements ActionListener {
+		public void actionPerformed(ActionEvent e) {
+
+			// System.out.println("Setup Button pressed !");
+			ServerHost = i_host.getText();
+			RTSP_server_port = Integer.parseInt(i_port.getText());
+			if (!ServerHost.equals("")) {
+				try {
+					ServerIPAddr = InetAddress.getByName(ServerHost);
+				} catch(UnknownHostException ee) {
+					System.out.println("Invalid hostname");
+					return;
+				}
+			}
+
+			if (!i_code.getText().equals("")) 
+				encryptionKey = String.valueOf(i_code.getText());
+			
+			if (!i_frame.getText().equals("")) 
+				show_hash_until = Integer.parseInt(i_frame.getText());
+			
+			try {
+				setupConnection();
+			} catch (Exception es) {
+				System.out.println(es);
+			}
+
+		}
+	}
+
+	class cancelSettingButtonListener implements ActionListener {
+		public void actionPerformed(ActionEvent e) {
+
+			// System.out.println("Setup Button pressed !");
+			f.setVisible(true);
+			fs.setVisible(false);
+
+		}
+	}
 
 	// Handler for Setup button
 	// -----------------------
